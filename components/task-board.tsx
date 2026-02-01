@@ -58,7 +58,7 @@ function TaskCard({ task }: { task: Task }) {
     try {
       await assignAgent({
         taskId: task._id,
-        assigneeId: agentId,
+        agentId: agentId,
       });
       setShowAssignMenu(false);
     } catch (error) {
