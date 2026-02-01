@@ -327,6 +327,195 @@ export const cleanupSampleData = mutation({
   },
 });
 
+/**
+ * AGT-138: Seed AGENTS.md content for Operating Manual page.
+ * Stores structured content in settings table with key "agents_md".
+ *
+ * Run: npx convex run seed:seedAgentsMd
+ */
+export const seedAgentsMd = mutation({
+  handler: async (ctx) => {
+    const now = Date.now();
+
+    const agentsMdContent = {
+      mission: {
+        title: "Mission",
+        content: `EVOX Mission Control is an AI agent orchestration dashboard that coordinates multiple specialized agents working on software development tasks. The system enables human oversight while maximizing agent autonomy within defined boundaries.`,
+      },
+      team: {
+        title: "Team Roster",
+        members: [
+          {
+            name: "MAX",
+            role: "Project Manager",
+            emoji: "👨‍💼",
+            responsibilities: [
+              "Task triage and assignment",
+              "Sprint planning",
+              "Quality gate enforcement",
+              "Agent coordination",
+            ],
+          },
+          {
+            name: "SAM",
+            role: "Backend Engineer",
+            emoji: "🤖",
+            responsibilities: [
+              "Convex functions and schema",
+              "API integrations (Linear, GitHub)",
+              "Webhook handlers",
+              "Database operations",
+            ],
+            territory: ["convex/", "scripts/", "lib/evox/"],
+          },
+          {
+            name: "LEO",
+            role: "Frontend Engineer",
+            emoji: "🦁",
+            responsibilities: [
+              "React components",
+              "Next.js pages",
+              "UI/UX implementation",
+              "Tailwind styling",
+            ],
+            territory: ["app/", "components/"],
+          },
+          {
+            name: "ELLA",
+            role: "Content Strategist",
+            emoji: "✍️",
+            responsibilities: [
+              "Documentation",
+              "Copy writing",
+              "User guides",
+            ],
+          },
+          {
+            name: "SON",
+            role: "CEO / Human Overseer",
+            emoji: "👤",
+            responsibilities: [
+              "Strategic direction",
+              "Final approval",
+              "Human-in-the-loop decisions",
+            ],
+          },
+        ],
+      },
+      stack: {
+        title: "Tech Stack",
+        technologies: [
+          { name: "Next.js 14", category: "Frontend", description: "App Router, Server Components" },
+          { name: "Convex", category: "Backend", description: "Real-time database, serverless functions" },
+          { name: "Tailwind CSS", category: "Styling", description: "Utility-first CSS framework" },
+          { name: "shadcn/ui", category: "Components", description: "Accessible component library" },
+          { name: "Linear", category: "Project Management", description: "Issue tracking, task management" },
+          { name: "GitHub", category: "Version Control", description: "Code hosting, CI/CD" },
+          { name: "Vercel", category: "Deployment", description: "Hosting, previews, production" },
+        ],
+      },
+      workflow: {
+        title: "Task Workflow",
+        steps: [
+          {
+            step: 1,
+            name: "Ticket Creation",
+            description: "Tasks originate in Linear with AGT-XXX identifier",
+          },
+          {
+            step: 2,
+            name: "Dispatch",
+            description: "MAX assigns to appropriate agent based on territory",
+          },
+          {
+            step: 3,
+            name: "Execution",
+            description: "Agent reads context (CLAUDE.md, DISPATCH.md, WORKING.md), implements solution",
+          },
+          {
+            step: 4,
+            name: "Commit",
+            description: "Changes committed with 'closes AGT-XXX' message pattern",
+          },
+          {
+            step: 5,
+            name: "Verify",
+            description: "Build must pass, no type errors, all files committed",
+          },
+          {
+            step: 6,
+            name: "Report",
+            description: "Agent posts completion summary to Linear ticket",
+          },
+        ],
+      },
+      conventions: {
+        title: "Conventions",
+        rules: [
+          {
+            category: "Commits",
+            pattern: "closes AGT-XXX: brief description",
+            example: "closes AGT-138: update standup query for date ranges",
+          },
+          {
+            category: "Branches",
+            pattern: "username/agt-xxx-short-description",
+            example: "sonpiaz/agt-138-standup-redesign",
+          },
+          {
+            category: "Tickets",
+            pattern: "AGT-XXX",
+            example: "AGT-138",
+          },
+          {
+            category: "Territory",
+            rule: "Do NOT edit another agent's files. Create a handoff task instead.",
+          },
+          {
+            category: "Attribution",
+            rule: "Use agentActions:completeTask API for proper attribution (not direct DB writes)",
+          },
+        ],
+      },
+      bootSequence: {
+        title: "Agent Boot Sequence",
+        steps: [
+          "Read CLAUDE.md — Project rules and patterns",
+          "Read DISPATCH.md — Current task queue",
+          "Read SOUL.md — Agent identity and expertise",
+          "Read WORKING.md — Last session context",
+          "Check @mentions — Any messages or requests",
+          "Act on assigned task OR report HEARTBEAT_OK",
+        ],
+      },
+      updatedAt: now,
+      version: 1,
+    };
+
+    // Check if already exists
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "agents_md"))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        value: agentsMdContent,
+        updatedAt: now,
+      });
+      return { message: "AGENTS.md content updated", updated: true };
+    }
+
+    await ctx.db.insert("settings", {
+      key: "agents_md",
+      value: agentsMdContent,
+      updatedAt: now,
+    });
+
+    return { message: "AGENTS.md content seeded", created: true };
+  },
+});
+
 // Reset database (use with caution!)
 export const resetDatabase = mutation({
   handler: async (ctx) => {
