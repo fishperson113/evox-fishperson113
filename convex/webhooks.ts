@@ -10,6 +10,17 @@ import { mutation, action, internalMutation } from "./_generated/server";
 // Regex to match ticket IDs like "AGT-123", "closes AGT-45", etc.
 const TICKET_REGEX = /\b(AGT-\d+)\b/gi;
 
+// Regex to detect "closes AGT-XX" pattern (task completion)
+const CLOSES_REGEX = /closes\s+(AGT-\d+)/gi;
+
+// Map GitHub usernames to agent names (for skill tracking)
+const GITHUB_TO_AGENT: Record<string, string> = {
+  "sonpiaz": "max",      // Son's GitHub → Max (PM)
+  "sam-agent": "sam",    // SAM's commits
+  "leo-agent": "leo",    // LEO's commits
+  // Add more mappings as needed
+};
+
 /**
  * Store webhook event in database
  */
@@ -230,6 +241,28 @@ export const processGitHubPush = action({
           }
         );
       }
+
+      // AGT-132: Track skill completion when "closes AGT-XX" detected
+      const closesMatches = message.match(CLOSES_REGEX);
+      if (closesMatches && closesMatches.length > 0) {
+        const agentName = GITHUB_TO_AGENT[author.toLowerCase()];
+        if (agentName) {
+          // Record task completion for skill tracking
+          try {
+            await ctx.runMutation(
+              // @ts-ignore - internal mutation reference
+              { name: "webhooks:recordSkillCompletion" },
+              {
+                agentName,
+                ticketId: closesMatches[0].replace(/closes\s+/i, "").toUpperCase(),
+                commitHash: hash,
+              }
+            );
+          } catch (e) {
+            console.error("Failed to record skill completion:", e);
+          }
+        }
+      }
     }
 
     return { processed: true, results };
@@ -355,5 +388,63 @@ export const listRecentEvents = mutation({
       .take(args.limit || 50);
 
     return events;
+  },
+});
+
+/**
+ * AGT-132: Record skill completion from webhook
+ * Called when "closes AGT-XX" is detected in a commit message
+ */
+export const recordSkillCompletion = mutation({
+  args: {
+    agentName: v.string(),
+    ticketId: v.string(),
+    commitHash: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find agent by name mapping
+    const mapping = await ctx.db
+      .query("agentMappings")
+      .withIndex("by_name", (q) => q.eq("name", args.agentName.toLowerCase()))
+      .first();
+
+    if (!mapping) {
+      console.log(`No agent mapping found for: ${args.agentName}`);
+      return { success: false, reason: "Agent not found" };
+    }
+
+    // Find agent skills record
+    const skills = await ctx.db
+      .query("agentSkills")
+      .withIndex("by_agent", (q) => q.eq("agentId", mapping.convexAgentId))
+      .first();
+
+    if (!skills) {
+      console.log(`No skills record for agent: ${args.agentName}`);
+      return { success: false, reason: "Skills not initialized" };
+    }
+
+    // Update task completion count
+    const now = Date.now();
+    await ctx.db.patch(skills._id, {
+      tasksCompleted: skills.tasksCompleted + 1,
+      updatedAt: now,
+    });
+
+    // Log activity
+    await ctx.db.insert("activities", {
+      agent: mapping.convexAgentId,
+      action: "completed_via_webhook",
+      target: args.ticketId,
+      metadata: { commitHash: args.commitHash, source: "github" },
+      createdAt: now,
+    });
+
+    return {
+      success: true,
+      agent: args.agentName,
+      ticketId: args.ticketId,
+      tasksCompleted: skills.tasksCompleted + 1,
+    };
   },
 });
