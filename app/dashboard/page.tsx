@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useMemo, useEffect, useRef } from "react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AgentCard } from "@/components/agent-card";
 import { ActivityFeed } from "@/components/activity-feed";
@@ -68,10 +68,27 @@ const agentNameToCanonical: Record<string, string> = {
   LEO: "leo",
 };
 
+const SYNC_INTERVAL_MS = 60 * 1000; // 60s (AGT-133)
+
 export default function DashboardPage() {
   const agents = useQuery(api.agents.list);
   const tasks = useQuery(api.tasks.list, {});
   const activities = useQuery(api.activities.listWithAgents, { limit: 50 });
+  const triggerSync = useAction(api.linearSync.triggerSync);
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // AGT-133: Auto-sync on mount + every 60s
+  useEffect(() => {
+    const runSync = () => {
+      triggerSync({}).catch((err) => console.warn("Dashboard auto-sync failed:", err));
+    };
+    runSync();
+    syncIntervalRef.current = setInterval(runSync, SYNC_INTERVAL_MS);
+    return () => {
+      if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
+    };
+  }, [triggerSync]);
+
   // Unread counts: skip query on dashboard to avoid crash when agentMappings not seeded or Convex not yet deployed; badge shows 0
   const unreadCounts: Record<string, number> | undefined = undefined;
 

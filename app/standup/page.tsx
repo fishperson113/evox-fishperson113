@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ChevronLeft, ChevronRight, RefreshCw, Check } from "lucide-react";
@@ -15,12 +15,44 @@ const roleToColor = {
   pm: "blue" as const,
 };
 
-/** User's local day as UTC timestamps (start and end of day) for Convex standup */
-function toDayRange(d: Date): { startTs: number; endTs: number } {
-  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const end = start + 24 * 60 * 60 * 1000 - 1;
+/** Time filter preset for standup (AGT-131) */
+export type StandupTimeFilter = "full" | "morning" | "afternoon" | "evening";
+
+/** User's local day + optional time window as UTC ms for Convex standup */
+function getDayRangeWithTimeFilter(
+  d: Date,
+  filter: StandupTimeFilter
+): { startTs: number; endTs: number } {
+  const y = d.getFullYear();
+  const m = d.getMonth();
+  const day = d.getDate();
+  let start: number;
+  let end: number;
+  if (filter === "full") {
+    start = new Date(y, m, day).getTime();
+    end = start + 24 * 60 * 60 * 1000 - 1;
+  } else if (filter === "morning") {
+    start = new Date(y, m, day, 0, 0, 0, 0).getTime();
+    end = new Date(y, m, day, 12, 0, 0, 0).getTime() - 1;
+  } else if (filter === "afternoon") {
+    start = new Date(y, m, day, 12, 0, 0, 0).getTime();
+    end = new Date(y, m, day, 18, 0, 0, 0).getTime() - 1;
+  } else {
+    // evening: 18:00–24:00
+    start = new Date(y, m, day, 18, 0, 0, 0).getTime();
+    end = new Date(y, m, day, 23, 59, 59, 999).getTime();
+  }
   return { startTs: start, endTs: end };
 }
+
+const TIME_FILTER_LABELS: Record<StandupTimeFilter, string> = {
+  full: "Full day",
+  morning: "Morning (00:00–12:00)",
+  afternoon: "Afternoon (12:00–18:00)",
+  evening: "Evening (18:00–24:00)",
+};
+
+const SYNC_INTERVAL_MS = 60 * 1000; // 60s (AGT-133)
 
 /** Never show raw Convex _id — identifier column only linearIdentifier or "—" (BUG 2) */
 function sanitizeIdentifier(linearIdentifier?: string | null): string {
@@ -31,12 +63,29 @@ function sanitizeIdentifier(linearIdentifier?: string | null): string {
 
 export default function StandupPage() {
   const [date, setDate] = useState(new Date());
+  const [timeFilter, setTimeFilter] = useState<StandupTimeFilter>("full");
   const [syncState, setSyncState] = useState<"idle" | "syncing" | "success">("idle");
-  const dayRange = useMemo(() => toDayRange(date), [date]);
+  const dayRange = useMemo(
+    () => getDayRangeWithTimeFilter(date, timeFilter),
+    [date, timeFilter]
+  );
 
   const standupData = useQuery(api.standup.getDaily, dayRange);
   const standupSummary = useQuery(api.standup.getDailySummary, dayRange);
   const triggerSync = useAction(api.linearSync.triggerSync);
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // AGT-133: Auto-sync on mount + every 60s (manual Sync Now still available)
+  useEffect(() => {
+    const runSync = () => {
+      triggerSync({}).catch((err) => console.warn("Standup auto-sync failed:", err));
+    };
+    runSync();
+    syncIntervalRef.current = setInterval(runSync, SYNC_INTERVAL_MS);
+    return () => {
+      if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
+    };
+  }, [triggerSync]);
 
   const formatDate = (d: Date) => {
     return new Intl.DateTimeFormat("en-US", {
@@ -132,7 +181,12 @@ export default function StandupPage() {
           <div className="flex items-center gap-3">
             <div>
               <h1 className="text-2xl font-semibold text-zinc-50">Daily Standup</h1>
-              <p className="text-sm text-zinc-500">{formatDate(date)}</p>
+              <p className="text-sm text-zinc-500">
+                {formatDate(date)}
+                {timeFilter !== "full" && (
+                  <span className="ml-2 text-zinc-400">— {TIME_FILTER_LABELS[timeFilter]}</span>
+                )}
+              </p>
             </div>
             <Button
               variant="outline"
@@ -160,7 +214,20 @@ export default function StandupPage() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Time filter (AGT-131) */}
+            <select
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value as StandupTimeFilter)}
+              className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300 focus:border-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600"
+            >
+              {(Object.keys(TIME_FILTER_LABELS) as StandupTimeFilter[]).map((key) => (
+                <option key={key} value={key}>
+                  {TIME_FILTER_LABELS[key]}
+                </option>
+              ))}
+            </select>
+
             <button
               onClick={goToPrevDay}
               className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-2 text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-zinc-50"

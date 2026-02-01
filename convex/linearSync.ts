@@ -162,6 +162,16 @@ export const syncAll = internalAction({
       const created = results.filter((r) => r.created).length;
       const updated = results.filter((r) => !r.created).length;
 
+      // AGT-133: Update agent lastSeen when sync runs (sync-runner = max)
+      const maxMapping = await ctx.runQuery(api.agentMappings.getByAgentName, {
+        agentName: "max",
+      });
+      if (maxMapping?.convexAgentId) {
+        await ctx.runMutation(api.agents.touchLastSeen, {
+          agentId: maxMapping.convexAgentId,
+        });
+      }
+
       return {
         success: true,
         total: linearIssues.length,

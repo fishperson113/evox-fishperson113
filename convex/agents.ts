@@ -140,6 +140,14 @@ export const heartbeat = mutation({
   },
 });
 
+/** Update agent lastSeen (AGT-133: when sync runs, touch sync-runner agent) */
+export const touchLastSeen = mutation({
+  args: { agentId: v.id("agents") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.agentId, { lastSeen: Date.now() });
+  },
+});
+
 // DELETE
 export const remove = mutation({
   args: { id: v.id("agents") },
