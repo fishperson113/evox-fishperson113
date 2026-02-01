@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
-type AgentStatus = "online" | "idle" | "offline";
+type AgentStatus = "online" | "idle" | "offline" | "busy";
 type AgentRole = "pm" | "backend" | "frontend";
 
 interface AgentCardProps {
@@ -33,12 +33,14 @@ const statusColors: Record<AgentStatus, string> = {
   online: "bg-green-500",
   idle: "bg-yellow-500",
   offline: "bg-red-500",
+  busy: "bg-orange-500",
 };
 
 const statusLabels: Record<AgentStatus, string> = {
   online: "Online",
   idle: "Idle",
   offline: "Offline",
+  busy: "Busy",
 };
 
 export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbeat }: AgentCardProps) {
@@ -120,7 +122,8 @@ export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbe
                   "text-xs",
                   status === "online" && "border-green-500/20 bg-green-500/10 text-green-500",
                   status === "idle" && "border-yellow-500/20 bg-yellow-500/10 text-yellow-500",
-                  status === "offline" && "border-red-500/20 bg-red-500/10 text-red-500"
+                  status === "offline" && "border-red-500/20 bg-red-500/10 text-red-500",
+                  status === "busy" && "border-orange-500/20 bg-orange-500/10 text-orange-500"
                 )}
               >
                 {statusLabels[status]}
