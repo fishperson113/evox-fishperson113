@@ -22,9 +22,17 @@ export default defineSchema({
     currentTask: v.optional(v.id("tasks")),
     avatar: v.string(),
     lastSeen: v.number(),
+    linearUserId: v.optional(v.string()), // Linear user ID for API attribution
   })
     .index("by_status", ["status"])
     .index("by_name", ["name"]),
+
+  // Agent name → Convex/Linear mapping (ADR-001: attribution from caller, not Linear API key)
+  agentMappings: defineTable({
+    name: v.string(), // canonical: "max" | "sam" | "leo"
+    convexAgentId: v.id("agents"),
+    linearUserId: v.optional(v.string()), // Linear user ID for API calls
+  }).index("by_name", ["name"]),
 
   // Task management
   tasks: defineTable({
@@ -75,6 +83,25 @@ export default defineSchema({
   })
     .index("by_channel", ["channel"])
     .index("by_thread", ["threadId"]),
+
+  // Agent-to-agent messages (AGT-123: handoff, update, request, fyi)
+  agentMessages: defineTable({
+    from: v.id("agents"),
+    to: v.id("agents"),
+    type: v.union(
+      v.literal("handoff"),
+      v.literal("update"),
+      v.literal("request"),
+      v.literal("fyi")
+    ),
+    content: v.string(),
+    taskRef: v.optional(v.id("tasks")),
+    status: v.union(v.literal("unread"), v.literal("read")),
+    timestamp: v.number(),
+  })
+    .index("by_to_status", ["to", "status"])
+    .index("by_from_to", ["from", "to"])
+    .index("by_timestamp", ["timestamp"]),
 
   // Activity tracking
   activities: defineTable({
