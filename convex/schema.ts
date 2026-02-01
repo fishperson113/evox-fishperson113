@@ -165,4 +165,23 @@ export default defineSchema({
     value: v.any(),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+
+  // Agent persistent memory (ADR-002: Hierarchical Memory Architecture)
+  // AGT-107: SOUL.md per agent, AGT-109: WORKING.md per agent, AGT-110: Daily notes
+  agentMemory: defineTable({
+    agentId: v.id("agents"),
+    type: v.union(
+      v.literal("soul"),    // SOUL.md - identity, role, expertise (rarely updated)
+      v.literal("working"), // WORKING.md - current context (updated every session)
+      v.literal("daily")    // Daily notes - standup summaries (rotates daily)
+    ),
+    content: v.string(),
+    date: v.optional(v.string()), // For daily notes: YYYY-MM-DD
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    version: v.number(), // Optimistic concurrency
+  })
+    .index("by_agent_type", ["agentId", "type"])
+    .index("by_agent_date", ["agentId", "date"])
+    .index("by_type", ["type"]),
 });
