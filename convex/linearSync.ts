@@ -99,7 +99,7 @@ async function fetchLinearIssues(apiKey: string) {
  */
 export const syncFromLinear = action({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ success: boolean; total: number; created: number; updated: number; message: string }> => {
     const apiKey = process.env.LINEAR_API_KEY;
 
     if (!apiKey) {

@@ -108,15 +108,13 @@ export const listWithAgents = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let messagesQuery = ctx.db.query("messages");
-
-    if (args.channel) {
-      messagesQuery = messagesQuery.withIndex("by_channel", (q) =>
-        q.eq("channel", args.channel)
-      );
-    }
-
-    const messages = await messagesQuery.order("desc").collect();
+    const messages = args.channel
+      ? await ctx.db
+          .query("messages")
+          .withIndex("by_channel", (q) => q.eq("channel", args.channel!))
+          .order("desc")
+          .collect()
+      : await ctx.db.query("messages").order("desc").collect();
     const limitedMessages = args.limit
       ? messages.slice(0, args.limit)
       : messages;
