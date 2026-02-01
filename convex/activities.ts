@@ -1,17 +1,20 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { resolveAgentIdByName } from "./agentMappings";
 
-// CREATE
+// CREATE (ADR-001: agentName from caller for attribution, NOT Linear API key)
 export const log = mutation({
   args: {
-    agent: v.id("agents"),
+    agentName: v.string(),
     action: v.string(),
     target: v.string(),
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
+    const agentId = await resolveAgentIdByName(ctx.db, args.agentName);
     const activityId = await ctx.db.insert("activities", {
-      agent: args.agent,
+      agent: agentId,
       action: args.action,
       target: args.target,
       metadata: args.metadata,
@@ -60,7 +63,19 @@ export const getByAgent = query({
   },
 });
 
-// READ - Get recent activities with agent details
+// Task-related actions: target is task id — resolve to linearIdentifier + title (AGT-99)
+const TASK_ACTIONS = new Set([
+  "created_task",
+  "updated_task",
+  "updated_task_status",
+  "assigned_task",
+  "deleted_task",
+  "completed_task",   // AGT-124: from agentActions
+  "started_task",     // AGT-124: from agentActions
+  "commented_task",   // AGT-124: from agentActions
+]);
+
+// READ - Get recent activities with agent details; resolve task target to linearId + title
 export const listWithAgents = query({
   args: {
     limit: v.optional(v.number()),
@@ -76,13 +91,34 @@ export const listWithAgents = query({
       ? activities.slice(0, args.limit)
       : activities;
 
-    // Populate agent details
     const activitiesWithAgents = await Promise.all(
       limitedActivities.map(async (activity) => {
         const agent = await ctx.db.get(activity.agent);
+        let targetDisplay: string | undefined;
+        if (TASK_ACTIONS.has(activity.action) && activity.target) {
+          // Target can be Convex ID or string (e.g., "AGT-124" from agentActions)
+          // Try to resolve as Convex ID first, then check metadata for linearIdentifier
+          try {
+            const task = await ctx.db.get(activity.target as Id<"tasks">);
+            if (task) {
+              targetDisplay = task.linearIdentifier
+                ? `${task.linearIdentifier}: ${task.title}`
+                : task.title;
+            }
+          } catch {
+            // Target is not a valid Convex ID — check metadata for linearIdentifier
+            const meta = activity.metadata as { linearIdentifier?: string; summary?: string } | undefined;
+            if (meta?.linearIdentifier) {
+              targetDisplay = meta.summary
+                ? `${meta.linearIdentifier}: ${meta.summary.slice(0, 50)}${meta.summary.length > 50 ? "..." : ""}`
+                : meta.linearIdentifier;
+            }
+          }
+        }
         return {
           ...activity,
           agent,
+          targetDisplay: targetDisplay ?? activity.target,
         };
       })
     );

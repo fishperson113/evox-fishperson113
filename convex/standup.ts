@@ -5,16 +5,19 @@ import { query } from "./_generated/server";
  * Get daily standup report per agent
  * Returns breakdown of completed, in-progress, and blocked tasks for each agent
  *
- * @param date - Optional date string (YYYY-MM-DD), defaults to today
+ * @param startTs - Start of day (UTC ms). Frontend sends user's local day range.
+ * @param endTs - End of day (UTC ms).
  */
 export const getDaily = query({
   args: {
-    date: v.optional(v.string()),
+    startTs: v.optional(v.number()),
+    endTs: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const targetDate = args.date || new Date().toISOString().split("T")[0];
-    const dayStart = new Date(targetDate).setHours(0, 0, 0, 0);
-    const dayEnd = new Date(targetDate).setHours(23, 59, 59, 999);
+    const dayStart =
+      args.startTs ?? new Date(new Date().toISOString().split("T")[0]).setHours(0, 0, 0, 0);
+    const dayEnd =
+      args.endTs ?? new Date(new Date().toISOString().split("T")[0]).setHours(23, 59, 59, 999);
 
     // Get all agents
     const agents = await ctx.db.query("agents").collect();
@@ -23,12 +26,15 @@ export const getDaily = query({
     const allTasks = await ctx.db.query("tasks").collect();
 
     // Get activities for the day to track task completions
-    const activities = await ctx.db
+    // Note: Convex indexes don't support range queries, so we filter after fetching
+    const allActivities = await ctx.db
       .query("activities")
-      .withIndex("by_created_at", (q) =>
-        q.gte("createdAt", dayStart).lte("createdAt", dayEnd)
-      )
+      .withIndex("by_created_at")
+      .order("desc")
       .collect();
+    const activities = allActivities.filter(
+      (a) => a.createdAt >= dayStart && a.createdAt <= dayEnd
+    );
 
     // Build per-agent report
     const agentReports = await Promise.all(
@@ -99,7 +105,8 @@ export const getDaily = query({
     );
 
     return {
-      date: targetDate,
+      startTs: dayStart,
+      endTs: dayEnd,
       agents: agentReports,
     };
   },
@@ -109,27 +116,33 @@ export const getDaily = query({
  * Get daily standup summary with aggregate stats
  * Returns overall metrics for the day
  *
- * @param date - Optional date string (YYYY-MM-DD), defaults to today
+ * @param startTs - Start of day (UTC ms). Frontend sends user's local day range.
+ * @param endTs - End of day (UTC ms).
  */
 export const getDailySummary = query({
   args: {
-    date: v.optional(v.string()),
+    startTs: v.optional(v.number()),
+    endTs: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const targetDate = args.date || new Date().toISOString().split("T")[0];
-    const dayStart = new Date(targetDate).setHours(0, 0, 0, 0);
-    const dayEnd = new Date(targetDate).setHours(23, 59, 59, 999);
+    const dayStart =
+      args.startTs ?? new Date(new Date().toISOString().split("T")[0]).setHours(0, 0, 0, 0);
+    const dayEnd =
+      args.endTs ?? new Date(new Date().toISOString().split("T")[0]).setHours(23, 59, 59, 999);
 
     // Get all tasks
     const allTasks = await ctx.db.query("tasks").collect();
 
     // Get activities for the day
-    const activities = await ctx.db
+    // Note: Convex indexes don't support range queries, so we filter after fetching
+    const allActivitiesForSummary = await ctx.db
       .query("activities")
-      .withIndex("by_created_at", (q) =>
-        q.gte("createdAt", dayStart).lte("createdAt", dayEnd)
-      )
+      .withIndex("by_created_at")
+      .order("desc")
       .collect();
+    const activities = allActivitiesForSummary.filter(
+      (a) => a.createdAt >= dayStart && a.createdAt <= dayEnd
+    );
 
     // Count unique agents active today
     const activeAgentIds = new Set(activities.map((a) => a.agent));
@@ -165,7 +178,8 @@ export const getDailySummary = query({
     const totalActivities = activities.length;
 
     return {
-      date: targetDate,
+      startTs: dayStart,
+      endTs: dayEnd,
       totalActivities,
       tasksCompleted,
       tasksInProgress,

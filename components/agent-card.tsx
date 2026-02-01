@@ -15,6 +15,8 @@ interface AgentCardProps {
   currentTask?: string;
   avatar: string;
   lastHeartbeat?: Date;
+  /** Unread message count (AGT-123 boot sequence) */
+  unreadCount?: number;
 }
 
 const roleLabels: Record<AgentRole, string> = {
@@ -29,11 +31,12 @@ const roleColors: Record<AgentRole, string> = {
   frontend: "bg-green-500/10 text-green-500 border-green-500/20",
 };
 
-const statusColors: Record<AgentStatus, string> = {
+/** Status dot colors (AGT-101): Online=green, Busy=yellow, Idle=gray, Offline=red */
+const statusDotColors: Record<AgentStatus, string> = {
   online: "bg-green-500",
-  idle: "bg-yellow-500",
+  busy: "bg-yellow-500",
+  idle: "bg-gray-500",
   offline: "bg-red-500",
-  busy: "bg-orange-500",
 };
 
 const statusLabels: Record<AgentStatus, string> = {
@@ -43,7 +46,7 @@ const statusLabels: Record<AgentStatus, string> = {
   busy: "Busy",
 };
 
-export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbeat }: AgentCardProps) {
+export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbeat, unreadCount = 0 }: AgentCardProps) {
   // Format last heartbeat as relative time
   const getRelativeTime = (date?: Date) => {
     if (!date) return "Never";
@@ -66,11 +69,12 @@ export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbe
   };
 
   const liveStatus = getAgentStatus();
+  const statusDotColor = statusDotColors[status];
   return (
     <Card className="border-zinc-800 bg-zinc-900/50">
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
-          {/* Avatar with live status indicator */}
+          {/* Avatar with status dot (AGT-101: Online=green, Busy=yellow, Idle=gray, Offline=red) */}
           <div className="relative group">
             <Avatar className="h-12 w-12 border-2 border-zinc-800">
               <AvatarFallback className="bg-zinc-800 text-zinc-50">
@@ -81,14 +85,14 @@ export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbe
               <div
                 className={cn(
                   "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-zinc-900",
-                  liveStatus.color
+                  statusDotColor
                 )}
               />
-              {liveStatus.status === "active" && (
+              {status === "online" && (
                 <div
                   className={cn(
                     "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full animate-ping",
-                    liveStatus.color,
+                    statusDotColor,
                     "opacity-75"
                   )}
                 />
@@ -106,24 +110,34 @@ export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbe
           <div className="flex-1 space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-zinc-50">{name}</h3>
-              <Badge
-                variant="outline"
-                className={cn("text-xs", roleColors[role])}
-              >
-                {roleLabels[role]}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs"
+                  >
+                    {unreadCount} unread
+                  </Badge>
+                )}
+                <Badge
+                  variant="outline"
+                  className={cn("text-xs", roleColors[role])}
+                >
+                  {roleLabels[role]}
+                </Badge>
+              </div>
             </div>
 
-            {/* Status badge */}
+            {/* Status badge (AGT-101: matches statusDotColors - Online=green, Busy=yellow, Idle=gray, Offline=red) */}
             <div className="flex items-center gap-2">
               <Badge
                 variant="outline"
                 className={cn(
                   "text-xs",
                   status === "online" && "border-green-500/20 bg-green-500/10 text-green-500",
-                  status === "idle" && "border-yellow-500/20 bg-yellow-500/10 text-yellow-500",
-                  status === "offline" && "border-red-500/20 bg-red-500/10 text-red-500",
-                  status === "busy" && "border-orange-500/20 bg-orange-500/10 text-orange-500"
+                  status === "busy" && "border-yellow-500/20 bg-yellow-500/10 text-yellow-500",
+                  status === "idle" && "border-gray-500/20 bg-gray-500/10 text-gray-400",
+                  status === "offline" && "border-red-500/20 bg-red-500/10 text-red-500"
                 )}
               >
                 {statusLabels[status]}
