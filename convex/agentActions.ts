@@ -1,12 +1,13 @@
 /**
  * Agent Completion API (AGT-124)
  * + Working Memory Updates (AGT-109)
+ * + Daily Notes Auto-Logging (AGT-110)
  *
  * Problem: All 30 tasks attributed to SON because Linear API key = Son's.
  * Solution: Agents write directly to Convex with correct attribution.
  *
  * ADR-001: Attribution comes from caller (agent name), not Linear API key.
- * ADR-002: Auto-update WORKING.md on task completion.
+ * ADR-002: Auto-update WORKING.md + Daily Notes on task completion.
  */
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
@@ -144,8 +145,12 @@ export const completeTask = mutation({
     });
 
     // 6. AGT-109: Auto-update WORKING.md with completed task
+    // 7. AGT-110: Auto-log to daily notes
     if (args.action === "completed") {
       await updateWorkingMemoryOnComplete(ctx, agentId, task.linearIdentifier ?? args.ticket, args.summary);
+      await logToDailyNotes(ctx, agentId, "completed", task.linearIdentifier ?? args.ticket, args.summary);
+    } else if (args.action === "in_progress") {
+      await logToDailyNotes(ctx, agentId, "started", task.linearIdentifier ?? args.ticket, args.summary);
     }
 
     return {
@@ -248,6 +253,204 @@ Check DISPATCH.md for next task
     });
   }
 }
+
+/**
+ * AGT-110: Helper to auto-log activity to daily notes.
+ * Creates or updates today's daily note with task activity.
+ */
+async function logToDailyNotes(
+  ctx: { db: any },
+  agentId: string,
+  action: "completed" | "started" | "blocked",
+  ticketId: string,
+  summary: string
+) {
+  const now = Date.now();
+  const today = new Date().toISOString().split("T")[0];
+  const timestamp = new Date().toISOString().slice(11, 16); // HH:MM
+
+  // Get today's daily note
+  const dailyNotes = await ctx.db
+    .query("agentMemory")
+    .withIndex("by_agent_date", (q: any) =>
+      q.eq("agentId", agentId).eq("date", today)
+    )
+    .collect();
+
+  const existing = dailyNotes.find((n: any) => n.type === "daily");
+
+  // Build log entry based on action
+  const emoji = action === "completed" ? "✓" : action === "started" ? "→" : "⚠";
+  const entry = `- [${emoji}] ${timestamp} ${ticketId}: ${summary.slice(0, 60)}${summary.length > 60 ? "..." : ""}`;
+
+  if (existing) {
+    // Append to appropriate section
+    let content = existing.content;
+    const sectionMap: Record<string, string> = {
+      completed: "## Completed",
+      started: "## In Progress",
+      blocked: "## Blockers",
+    };
+    const section = sectionMap[action];
+
+    if (content.includes(section)) {
+      // Insert after section header
+      const lines = content.split("\n");
+      const sectionIdx = lines.findIndex((l: string) => l.trim() === section);
+      if (sectionIdx !== -1) {
+        let insertIdx = sectionIdx + 1;
+        // Skip empty lines
+        while (insertIdx < lines.length && lines[insertIdx].trim() === "") {
+          insertIdx++;
+        }
+        lines.splice(insertIdx, 0, entry);
+        content = lines.join("\n");
+      }
+    } else {
+      // Add section
+      content += `\n\n${section}\n${entry}`;
+    }
+
+    await ctx.db.patch(existing._id, {
+      content,
+      updatedAt: now,
+      version: existing.version + 1,
+    });
+  } else {
+    // Create new daily note
+    const agent = await ctx.db.get(agentId);
+    const sectionMap: Record<string, string> = {
+      completed: "## Completed",
+      started: "## In Progress",
+      blocked: "## Blockers",
+    };
+
+    const content = `# ${agent?.name ?? "AGENT"} — Daily Note
+Date: ${today}
+
+${sectionMap[action]}
+${entry}
+`;
+
+    await ctx.db.insert("agentMemory", {
+      agentId,
+      type: "daily",
+      content,
+      date: today,
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+    });
+  }
+}
+
+/**
+ * AGT-110: Manually add an entry to today's daily note.
+ * For logging blockers, notes, or custom entries.
+ *
+ * Usage:
+ * npx convex run agentActions:logDailyEntry '{"agent":"sam","section":"blocker","content":"Waiting for Linear API credentials"}'
+ */
+export const logDailyEntry = mutation({
+  args: {
+    agent: v.union(
+      v.literal("leo"),
+      v.literal("sam"),
+      v.literal("max"),
+      v.literal("ella")
+    ),
+    section: v.union(
+      v.literal("completed"),
+      v.literal("in_progress"),
+      v.literal("blocker"),
+      v.literal("note"),
+      v.literal("tomorrow")
+    ),
+    content: v.string(),
+    ticketId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const agentId = await resolveAgentIdByName(ctx.db, args.agent);
+    const agent = await ctx.db.get(agentId);
+    if (!agent) {
+      throw new Error(`Agent not found: ${args.agent}`);
+    }
+
+    const now = Date.now();
+    const today = new Date().toISOString().split("T")[0];
+    const timestamp = new Date().toISOString().slice(11, 16);
+
+    // Get today's daily note
+    const dailyNotes = await ctx.db
+      .query("agentMemory")
+      .withIndex("by_agent_date", (q: any) =>
+        q.eq("agentId", agentId).eq("date", today)
+      )
+      .collect();
+
+    const existing = dailyNotes.find((n: any) => n.type === "daily");
+
+    // Build entry
+    const prefix = args.ticketId ? `${args.ticketId}: ` : "";
+    const entry = `- ${timestamp} ${prefix}${args.content}`;
+
+    // Section headers
+    const sectionHeaders: Record<string, string> = {
+      completed: "## Completed",
+      in_progress: "## In Progress",
+      blocker: "## Blockers",
+      note: "## Notes",
+      tomorrow: "## Tomorrow",
+    };
+    const sectionHeader = sectionHeaders[args.section];
+
+    if (existing) {
+      let content = existing.content;
+
+      if (content.includes(sectionHeader)) {
+        const lines = content.split("\n");
+        const sectionIdx = lines.findIndex((l: string) => l.trim() === sectionHeader);
+        if (sectionIdx !== -1) {
+          let insertIdx = sectionIdx + 1;
+          while (insertIdx < lines.length && lines[insertIdx].trim() === "") {
+            insertIdx++;
+          }
+          lines.splice(insertIdx, 0, entry);
+          content = lines.join("\n");
+        }
+      } else {
+        content += `\n\n${sectionHeader}\n${entry}`;
+      }
+
+      await ctx.db.patch(existing._id, {
+        content,
+        updatedAt: now,
+        version: existing.version + 1,
+      });
+
+      return { success: true, updated: true };
+    } else {
+      const content = `# ${agent.name} — Daily Note
+Date: ${today}
+
+${sectionHeader}
+${entry}
+`;
+
+      const id = await ctx.db.insert("agentMemory", {
+        agentId,
+        type: "daily",
+        content,
+        date: today,
+        createdAt: now,
+        updatedAt: now,
+        version: 1,
+      });
+
+      return { success: true, created: true, id };
+    }
+  },
+});
 
 /**
  * AGT-109: Update WORKING.md at session end.
