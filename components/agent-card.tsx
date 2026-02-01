@@ -14,7 +14,10 @@ interface AgentCardProps {
   status: AgentStatus;
   currentTask?: string;
   avatar: string;
+  /** Last heartbeat (lastSeen) from agent */
   lastHeartbeat?: Date;
+  /** Last activity timestamp from activities table (preferred for "Last active") */
+  lastActivityAt?: Date;
   /** Unread message count (AGT-123 boot sequence) */
   unreadCount?: number;
 }
@@ -46,8 +49,8 @@ const statusLabels: Record<AgentStatus, string> = {
   busy: "Busy",
 };
 
-export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbeat, unreadCount = 0 }: AgentCardProps) {
-  // Format last heartbeat as relative time
+export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbeat, lastActivityAt, unreadCount = 0 }: AgentCardProps) {
+  // Format last heartbeat/activity as relative time
   const getRelativeTime = (date?: Date) => {
     if (!date) return "Never";
     const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -59,17 +62,23 @@ export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbe
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  // Get status based on last heartbeat
+  // Prefer last activity from activities table; fallback to lastHeartbeat (lastSeen)
+  const lastActive = lastActivityAt ?? lastHeartbeat;
+
+  // Get status based on last heartbeat (for tooltip)
   const getAgentStatus = () => {
-    if (!lastHeartbeat) return { status: "offline", color: "bg-red-500", label: "Offline" };
-    const minutesAgo = Math.floor((Date.now() - lastHeartbeat.getTime()) / 60000);
+    const ref = lastHeartbeat ?? lastActivityAt;
+    if (!ref) return { status: "offline", color: "bg-red-500", label: "Offline" };
+    const minutesAgo = Math.floor((Date.now() - ref.getTime()) / 60000);
     if (minutesAgo < 5) return { status: "active", color: "bg-green-500", label: "Active" };
     if (minutesAgo < 15) return { status: "idle", color: "bg-yellow-500", label: "Idle" };
     return { status: "offline", color: "bg-red-500", label: "Offline" };
   };
 
   const liveStatus = getAgentStatus();
-  const statusDotColor = statusDotColors[status];
+  // BUG 2: Normalize status (case-insensitive) so Busy/busy → yellow, Idle/idle → gray
+  const normalizedStatus = (status?.toLowerCase?.() ?? "offline") as AgentStatus;
+  const statusDotColor = statusDotColors[normalizedStatus] ?? statusDotColors.offline;
   return (
     <Card className="border-zinc-800 bg-zinc-900/50">
       <CardContent className="p-6">
@@ -88,7 +97,7 @@ export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbe
                   statusDotColor
                 )}
               />
-              {status === "online" && (
+              {normalizedStatus === "online" && (
                 <div
                   className={cn(
                     "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full animate-ping",
@@ -101,7 +110,7 @@ export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbe
             {/* Tooltip */}
             <div className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 group-hover:block">
               <div className="rounded-lg bg-zinc-800 px-3 py-2 text-xs text-zinc-50 shadow-lg whitespace-nowrap">
-                {liveStatus.label} — last seen {getRelativeTime(lastHeartbeat)}
+                {liveStatus.label} — last active {getRelativeTime(lastActive)}
               </div>
             </div>
           </div>
@@ -128,22 +137,22 @@ export function AgentCard({ name, role, status, currentTask, avatar, lastHeartbe
               </div>
             </div>
 
-            {/* Status badge (AGT-101: matches statusDotColors - Online=green, Busy=yellow, Idle=gray, Offline=red) */}
+            {/* Status badge (BUG 2: use normalizedStatus for colors) */}
             <div className="flex items-center gap-2">
               <Badge
                 variant="outline"
                 className={cn(
                   "text-xs",
-                  status === "online" && "border-green-500/20 bg-green-500/10 text-green-500",
-                  status === "busy" && "border-yellow-500/20 bg-yellow-500/10 text-yellow-500",
-                  status === "idle" && "border-gray-500/20 bg-gray-500/10 text-gray-400",
-                  status === "offline" && "border-red-500/20 bg-red-500/10 text-red-500"
+                  normalizedStatus === "online" && "border-green-500/20 bg-green-500/10 text-green-500",
+                  normalizedStatus === "busy" && "border-yellow-500/20 bg-yellow-500/10 text-yellow-500",
+                  normalizedStatus === "idle" && "border-gray-500/20 bg-gray-500/10 text-gray-400",
+                  normalizedStatus === "offline" && "border-red-500/20 bg-red-500/10 text-red-500"
                 )}
               >
-                {statusLabels[status]}
+                {statusLabels[normalizedStatus] ?? statusLabels.offline}
               </Badge>
               <span className="text-xs text-zinc-600">•</span>
-              <span className="text-xs text-zinc-500">{getRelativeTime(lastHeartbeat)}</span>
+              <span className="text-xs text-zinc-500">{getRelativeTime(lastActive)}</span>
             </div>
 
             {/* Current task */}

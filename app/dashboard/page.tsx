@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AgentCard } from "@/components/agent-card";
@@ -60,23 +61,69 @@ const mockActivities = [
   },
 ];
 
-export default function DashboardPage() {
-  const agents = useQuery(api.agents.list);
-  const tasks = useQuery(api.tasks.list, {});
-  const activities = useQuery(api.activities.listWithAgents, { limit: 10 });
+/** Map agent display name to canonical name for getUnreadMessages (AGT-123) */
+const agentNameToCanonical: Record<string, string> = {
+  SON: "max",
+  SAM: "sam",
+  LEO: "leo",
+};
 
-  // Use real data or fallback to mock
+export default function DashboardPage() {
+  const projects = useQuery(api.projects.list);
+  const evoxProjectId = useMemo(
+    () => projects?.find((p: { name: string }) => p.name === "EVOX")?._id,
+    [projects]
+  );
+  const agents = useQuery(api.agents.list);
+  const tasks = useQuery(api.tasks.list, evoxProjectId ? { projectId: evoxProjectId } : "skip");
+  const activities = useQuery(api.activities.listWithAgents, { limit: 50 });
+  const unreadCounts = useQuery(api.agentMessages.getUnreadCounts);
+  useQuery(api.agentMessages.getUnreadMessages, { agentName: "max" });
+
   const displayAgents = agents && agents.length > 0 ? agents : mockAgents;
   const displayActivities = activities && activities.length > 0 ? activities : mockActivities;
 
-  // Calculate task stats
+  // BUG 5: Same source as Tasks page — EVOX project only so Completed count matches
   const taskStats = tasks
     ? {
         total: tasks.length,
-        inProgress: tasks.filter((t: any) => t.status === "in_progress").length,
-        completed: tasks.filter((t: any) => t.status === "done").length,
+        inProgress: tasks.filter((t: { status: string }) => t.status === "in_progress").length,
+        completed: tasks.filter((t: { status: string }) => t.status === "done").length,
       }
-    : { total: 12, inProgress: 4, completed: 8 };
+    : { total: 0, inProgress: 0, completed: 0 };
+
+  // BUG 3: Last activity per agent from activities table (max createdAt per agent)
+  const lastActivityByAgent = useMemo(() => {
+    if (!activities?.length) return {} as Record<string, number>;
+    const byAgent: Record<string, number> = {};
+    for (const a of activities) {
+      const agentDoc = (a as { agent: { _id: string } | null }).agent;
+      const id = agentDoc?._id;
+      if (!id) continue;
+      const ts = (a as { createdAt: number }).createdAt;
+      if (!byAgent[id] || ts > byAgent[id]) byAgent[id] = ts;
+    }
+    return byAgent;
+  }, [activities]);
+
+  // BUG 4: Current task = first in_progress task assigned to agent (or task by agent.currentTask)
+  const currentTaskByAgent = useMemo(() => {
+    if (!tasks?.length || !agents?.length) return {} as Record<string, string>;
+    const map: Record<string, string> = {};
+    for (const agent of agents) {
+      const a = agent as { _id: string; currentTask?: string };
+      const inProgress = tasks.find(
+        (t: { assignee?: string; status: string }) =>
+          t.assignee === a._id && t.status === "in_progress"
+      );
+      const byCurrent = a.currentTask
+        ? tasks.find((t: { _id: string }) => t._id === a.currentTask)
+        : null;
+      const task = inProgress ?? byCurrent;
+      if (task) map[a._id] = (task as { title: string }).title;
+    }
+    return map;
+  }, [tasks, agents]);
 
   return (
     <div className="h-full bg-black p-8">
@@ -131,17 +178,29 @@ export default function DashboardPage() {
           <div>
             <h2 className="mb-4 text-lg font-semibold text-zinc-50">Agents</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {displayAgents.map((agent: any, idx: number) => (
-                <AgentCard
-                  key={idx}
-                  name={agent.name}
-                  role={agent.role}
-                  status={agent.status}
-                  currentTask={agent.currentTask}
-                  avatar={agent.avatar}
-                  lastHeartbeat={agent.lastHeartbeat}
-                />
-              ))}
+              {displayAgents.map((agent: any, idx: number) => {
+                const canonical =
+                  agentNameToCanonical[agent.name] ?? agent.name?.toLowerCase?.();
+                const unreadCount = unreadCounts?.[canonical] ?? 0;
+                const lastActivityTs = agent._id ? lastActivityByAgent[agent._id] : undefined;
+                const lastActivityAt = lastActivityTs ? new Date(lastActivityTs) : undefined;
+                const lastHeartbeat = agent.lastSeen ? new Date(agent.lastSeen) : agent.lastHeartbeat;
+                const currentTask =
+                  agent._id ? currentTaskByAgent[agent._id] : agent.currentTask;
+                return (
+                  <AgentCard
+                    key={agent._id ?? idx}
+                    name={agent.name}
+                    role={agent.role}
+                    status={agent.status}
+                    currentTask={currentTask}
+                    avatar={agent.avatar}
+                    lastHeartbeat={lastHeartbeat}
+                    lastActivityAt={lastActivityAt}
+                    unreadCount={unreadCount}
+                  />
+                );
+              })}
             </div>
           </div>
 

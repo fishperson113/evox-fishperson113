@@ -14,6 +14,8 @@ interface Activity {
   } | null;
   action: string;
   target: string;
+  /** Resolved task display: linearIdentifier + title when target is a task (AGT-99) */
+  targetDisplay?: string;
   createdAt: number;
   metadata?: Record<string, unknown>;
 }
@@ -68,10 +70,17 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
                         {activity.agent?.name || "Unknown"}
                       </span>{" "}
                       {actionLabels[activity.action] || activity.action}
-                      {activity.target && (
+                      {(activity.targetDisplay ?? activity.target) && (
                         <>
                           {" "}
-                          <span className="text-zinc-500">{activity.target}</span>
+                          <span className="text-zinc-500">
+                            {activity.targetDisplay ??
+                              (typeof activity.target === "string" &&
+                              activity.target.length >= 15 &&
+                              /^[a-z0-9]+$/i.test(activity.target)
+                                ? "—"
+                                : activity.target)}
+                          </span>
                         </>
                       )}
                     </p>

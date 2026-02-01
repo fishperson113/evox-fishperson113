@@ -96,17 +96,12 @@ export const listWithAgents = query({
         const agent = await ctx.db.get(activity.agent);
         let targetDisplay: string | undefined;
         if (TASK_ACTIONS.has(activity.action) && activity.target) {
-          // Target can be Convex ID or string (e.g., "AGT-124" from agentActions)
-          // Try to resolve as Convex ID first, then check metadata for linearIdentifier
-          try {
-            const task = await ctx.db.get(activity.target as Id<"tasks">);
-            if (task) {
-              targetDisplay = task.linearIdentifier
-                ? `${task.linearIdentifier}: ${task.title}`
-                : task.title;
-            }
-          } catch {
-            // Target is not a valid Convex ID — check metadata for linearIdentifier
+          const task = await ctx.db.get(activity.target as Id<"tasks">);
+          if (task) {
+            targetDisplay = task.linearIdentifier
+              ? `${task.linearIdentifier}: ${task.title}`
+              : task.title;
+          } else {
             const meta = activity.metadata as { linearIdentifier?: string; summary?: string } | undefined;
             if (meta?.linearIdentifier) {
               targetDisplay = meta.summary
@@ -115,10 +110,16 @@ export const listWithAgents = query({
             }
           }
         }
+        // Never show raw Convex _id to user (BUG 1 / AGT-99 pattern)
+        const rawTarget = activity.target;
+        const hideRawId =
+          typeof rawTarget === "string" &&
+          rawTarget.length >= 15 &&
+          /^[a-z0-9]+$/i.test(rawTarget);
         return {
           ...activity,
           agent,
-          targetDisplay: targetDisplay ?? activity.target,
+          targetDisplay: targetDisplay ?? (hideRawId ? "—" : rawTarget),
         };
       })
     );
