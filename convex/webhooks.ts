@@ -105,6 +105,96 @@ export const postLinearComment = internalAction({
 });
 
 /**
+ * AGT-161: Update Linear issue status (e.g., to "Done" on "closes AGT-XX")
+ */
+export const updateLinearIssueStatus = internalAction({
+  args: {
+    ticketId: v.string(), // e.g., "AGT-161"
+    status: v.string(),   // e.g., "Done", "In Progress"
+  },
+  handler: async (ctx, args) => {
+    const linearApiKey = process.env.LINEAR_API_KEY;
+    if (!linearApiKey) {
+      console.error("LINEAR_API_KEY not configured");
+      return { success: false, error: "LINEAR_API_KEY not configured" };
+    }
+
+    try {
+      // 1. Get issue UUID and team ID from identifier
+      const issueResponse = await fetch("https://api.linear.app/graphql", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: linearApiKey,
+        },
+        body: JSON.stringify({
+          query: `{ issue(id: "${args.ticketId}") { id team { id } } }`,
+        }),
+      });
+
+      const issueData = await issueResponse.json();
+      const issueUuid = issueData?.data?.issue?.id;
+      const teamId = issueData?.data?.issue?.team?.id;
+
+      if (!issueUuid || !teamId) {
+        console.error(`Could not find ${args.ticketId} in Linear`);
+        return { success: false, error: `Ticket ${args.ticketId} not found` };
+      }
+
+      // 2. Get workflow states for the team to find "Done" state
+      const statesResponse = await fetch("https://api.linear.app/graphql", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: linearApiKey,
+        },
+        body: JSON.stringify({
+          query: `{ workflowStates(filter: { team: { id: { eq: "${teamId}" } } }) { nodes { id name type } } }`,
+        }),
+      });
+
+      const statesData = await statesResponse.json();
+      const states = statesData?.data?.workflowStates?.nodes || [];
+
+      // Find the target state (match by name, case-insensitive)
+      const targetState = states.find(
+        (s: { name: string; type: string }) =>
+          s.name.toLowerCase() === args.status.toLowerCase() ||
+          (args.status.toLowerCase() === "done" && s.type === "completed")
+      );
+
+      if (!targetState) {
+        console.error(`Could not find "${args.status}" workflow state for team`);
+        return { success: false, error: `State "${args.status}" not found` };
+      }
+
+      // 3. Update issue status
+      const updateResponse = await fetch("https://api.linear.app/graphql", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: linearApiKey,
+        },
+        body: JSON.stringify({
+          query: `mutation { issueUpdate(id: "${issueUuid}", input: { stateId: "${targetState.id}" }) { success issue { id identifier state { name } } } }`,
+        }),
+      });
+
+      const updateData = await updateResponse.json();
+      const success = updateData?.data?.issueUpdate?.success === true;
+      const newState = updateData?.data?.issueUpdate?.issue?.state?.name;
+
+      console.log(`Updated ${args.ticketId} to ${newState}: ${success}`);
+
+      return { success, ticketId: args.ticketId, newState };
+    } catch (error) {
+      console.error("Error updating Linear issue status:", error);
+      return { success: false, error: String(error) };
+    }
+  },
+});
+
+/**
  * Create a P0 bug ticket in Linear for deploy failures (internal)
  */
 export const createLinearBugTicket = internalAction({
@@ -239,11 +329,27 @@ export const processGitHubPush = action({
       }
 
       // AGT-132: Track skill completion when "closes AGT-XX" detected
+      // AGT-161: Auto-close Linear ticket when "closes AGT-XX" detected
       const closesMatches = message.match(CLOSES_REGEX);
       if (closesMatches && closesMatches.length > 0) {
+        for (const match of closesMatches) {
+          const closedTicketId = match.replace(/closes\s+/i, "").toUpperCase();
+
+          // Close the Linear ticket
+          try {
+            const closeResult = await ctx.runAction(internal.webhooks.updateLinearIssueStatus, {
+              ticketId: closedTicketId,
+              status: "Done",
+            });
+            console.log(`Auto-closed ${closedTicketId}: ${closeResult.success}`);
+          } catch (e) {
+            console.error(`Failed to auto-close ${closedTicketId}:`, e);
+          }
+        }
+
+        // Record skill completion for the first closed ticket
         const agentName = GITHUB_TO_AGENT[author.toLowerCase()];
         if (agentName) {
-          // Record task completion for skill tracking
           try {
             await ctx.runMutation(internal.webhooks.recordSkillCompletion, {
               agentName,
