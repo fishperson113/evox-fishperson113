@@ -32,15 +32,15 @@ const roleLabels: Record<string, string> = {
   frontend: "Frontend",
 };
 
-type TabId = "about" | "skills" | "tasks" | "activity" | "messages" | "memory";
+type TabId = "overview" | "tasks" | "activity" | "memory" | "heartbeat" | "messages";
 
 const TABS: { id: TabId; label: string; count?: number }[] = [
-  { id: "about", label: "About" },
-  { id: "skills", label: "Skills" },
+  { id: "overview", label: "Overview" },
   { id: "tasks", label: "Tasks" },
   { id: "activity", label: "Activity" },
-  { id: "messages", label: "Messages" },
   { id: "memory", label: "Memory" },
+  { id: "heartbeat", label: "Heartbeat" },
+  { id: "messages", label: "Messages" },
 ];
 
 /** AGT-155: Agent Profile v2 — 6 tabs, surface all available data */
@@ -52,7 +52,7 @@ export function AgentProfile({
   avatar,
   onClose,
 }: AgentProfileProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("about");
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [soulExpanded, setSoulExpanded] = useState(false);
   const [sendAsName, setSendAsName] = useState<string>("max");
   const [messageDraft, setMessageDraft] = useState("");
@@ -185,36 +185,33 @@ export function AgentProfile({
             )}
           >
             {tab.id === "tasks" && taskCount > 0 ? `Tasks (${taskCount})` : tab.label}
-            {tab.id === "messages" && Array.isArray(messagesForAgent) && messagesForAgent.length > 0 && ` (${messagesForAgent.length})`}
-            {tab.id === "memory" && Array.isArray(dailyNotes) && dailyNotes.length > 0 && ` (${dailyNotes.length})`}
+            {tab.id === "messages" && Array.isArray(messagesForAgent) && messagesForAgent.length > 0 ? ` (${messagesForAgent.length})` : ""}
+            {tab.id === "memory" && Array.isArray(dailyNotes) && dailyNotes.length > 0 ? ` (${dailyNotes.length})` : ""}
           </button>
         ))}
       </div>
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto p-4 min-h-0">
-        {activeTab === "about" && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">About (SOUL)</h4>
-            <div
-              className={cn("mt-2 text-sm text-zinc-500 whitespace-pre-wrap", !soulExpanded && "line-clamp-3")}
-            >
-              {soulContent}
-            </div>
-            {soulContent !== "—" && soulContent.length > 120 && (
-              <button
-                type="button"
-                onClick={() => setSoulExpanded(!soulExpanded)}
-                className="mt-1 text-xs text-zinc-500 underline hover:text-zinc-400"
-              >
-                {soulExpanded ? "Show less" : "Show more"}
-              </button>
-            )}
-          </div>
-        )}
-
-        {activeTab === "skills" && (
+        {activeTab === "overview" && (
           <div className="space-y-4">
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">SOUL</h4>
+              <div
+                className={cn("mt-2 text-sm text-zinc-500 whitespace-pre-wrap", !soulExpanded && "line-clamp-3")}
+              >
+                {soulContent}
+              </div>
+              {soulContent !== "—" && soulContent.length > 120 && (
+                <button
+                  type="button"
+                  onClick={() => setSoulExpanded(!soulExpanded)}
+                  className="mt-1 text-xs text-zinc-500 underline hover:text-zinc-400"
+                >
+                  {soulExpanded ? "Show less" : "Show more"}
+                </button>
+              )}
+            </div>
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Skills</h4>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -235,55 +232,48 @@ export function AgentProfile({
               </div>
             </div>
             {agentSkills && (
-              <>
-                <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Level & stats</h4>
-                  <p className="mt-1 text-sm text-zinc-400">
-                    {agentSkills.autonomyLevelName ?? "—"} · {agentSkills.tasksCompleted ?? 0} completed
-                    {(agentSkills.tasksWithBugs ?? 0) > 0 && ` · ${agentSkills.tasksWithBugs} with bugs`}
-                  </p>
-                </div>
-                {agentSkills.territory?.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Territory</h4>
-                    <p className="mt-1 font-mono text-xs text-[#888]">{agentSkills.territory.join(", ")}</p>
-                  </div>
-                )}
-                {agentSkills.permissions && (
-                  <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Permissions</h4>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Push: {agentSkills.permissions.canPush ? "✓" : "—"} · Merge: {agentSkills.permissions.canMerge ? "✓" : "—"} ·
-                      Deploy: {agentSkills.permissions.canDeploy ? "✓" : "—"} · Schema: {agentSkills.permissions.canEditSchema ? "✓" : "—"}
-                    </p>
-                  </div>
-                )}
-              </>
+              <p className="text-sm text-zinc-500">
+                {agentSkills.autonomyLevelName ?? "—"} · {agentSkills.tasksCompleted ?? 0} completed
+              </p>
             )}
           </div>
         )}
 
         {activeTab === "tasks" && (
-          <ul className="space-y-1.5">
-            {Array.isArray(tasksForAgent) && tasksForAgent.length > 0 ? (
-              tasksForAgent.slice(0, 20).map((t: { _id: Id<"tasks">; title?: string; linearIdentifier?: string; linearUrl?: string; status?: string }) => (
-                <li key={t._id}>
-                  <a
-                    href={t.linearUrl ?? "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-sm text-zinc-400 hover:text-zinc-50"
-                  >
-                    <span className="font-mono text-xs text-[#888]">{t.linearIdentifier ?? "—"}</span>{" "}
-                    {t.title ?? "—"}
-                    {t.status && <span className="ml-1 text-xs text-zinc-600">({t.status})</span>}
-                  </a>
-                </li>
-              ))
-            ) : (
-              <p className="text-sm text-zinc-500">No tasks assigned</p>
-            )}
-          </ul>
+          <div className="space-y-4">
+            {["todo", "in_progress", "backlog", "review", "done"].map((groupStatus) => {
+              const group = Array.isArray(tasksForAgent)
+                ? tasksForAgent.filter((t: { status?: string }) => (t.status ?? "").toLowerCase() === groupStatus)
+                : [];
+              const label = groupStatus === "backlog" ? "Blocked" : groupStatus.replace("_", " ");
+              return (
+                <div key={groupStatus}>
+                  <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">
+                    {label} ({group.length})
+                  </h4>
+                  <ul className="mt-1.5 space-y-1">
+                    {group.length === 0 ? (
+                      <li className="text-xs text-zinc-600">—</li>
+                    ) : (
+                      group.map((t: { _id: Id<"tasks">; title?: string; linearIdentifier?: string; linearUrl?: string }) => (
+                        <li key={t._id}>
+                          <a
+                            href={t.linearUrl ?? "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-sm text-zinc-400 hover:text-zinc-50"
+                          >
+                            <span className="font-mono text-xs text-[#888]">{t.linearIdentifier ?? "—"}</span>{" "}
+                            {t.title ?? "—"}
+                          </a>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
         )}
 
         {activeTab === "activity" && (
@@ -362,6 +352,40 @@ export function AgentProfile({
                 </ul>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "heartbeat" && (
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Last heartbeat</h4>
+              <p className="mt-1 text-sm text-zinc-400">
+                {full?.lastHeartbeat != null
+                  ? formatDistanceToNow(full.lastHeartbeat, { addSuffix: true })
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Uptime since last beat</h4>
+              <p className="mt-1 text-sm text-zinc-400">
+                {full?.lastHeartbeat != null
+                  ? formatDistanceToNow(full.lastHeartbeat)
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Status</h4>
+              <p className="mt-1 text-sm text-zinc-400">
+                {full?.lastHeartbeat != null
+                  ? (() => {
+                      const ageMs = Date.now() - full.lastHeartbeat;
+                      if (ageMs < 5 * 60 * 1000) return "healthy";
+                      if (ageMs < 15 * 60 * 1000) return "stale";
+                      return "offline";
+                    })()
+                  : "offline"}
+              </p>
+            </div>
           </div>
         )}
       </div>
