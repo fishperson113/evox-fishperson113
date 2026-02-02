@@ -179,7 +179,7 @@ export const listWithAgents = query({
       .take(limit);
 
     // Batch fetch all unique agents
-    const agentIds = [...new Set(events.map((e) => e.agentId))];
+    const agentIds = Array.from(new Set(events.map((e) => e.agentId)));
     const agents = await Promise.all(agentIds.map((id) => ctx.db.get(id)));
     const agentMap = new Map(
       agents.filter(Boolean).map((a) => [a!._id, a])
