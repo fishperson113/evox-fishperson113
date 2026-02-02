@@ -23,6 +23,7 @@ export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const agents = useQuery(api.agents.list);
+  const dashboardStats = useQuery(api.dashboard.getStats);
   const agentDetail = useQuery(
     api.agents.get,
     selectedAgentId ? { id: selectedAgentId } : "skip"
@@ -70,11 +71,20 @@ export default function Home() {
       }
     : null;
 
+  const taskCounts = dashboardStats?.taskCounts ?? { backlog: 0, todo: 0, inProgress: 0, review: 0, done: 0 };
+  const inProgressCount = (taskCounts.inProgress ?? 0) + (taskCounts.review ?? 0);
+  const doneCount = taskCounts.done ?? 0;
+  const totalTaskCount =
+    (taskCounts.backlog ?? 0) + (taskCounts.todo ?? 0) + (taskCounts.inProgress ?? 0) + (taskCounts.review ?? 0) + doneCount;
+
   return (
     <div className="flex h-screen flex-col bg-[#0a0a0a]">
       <TopBar
         agentsActive={activeCount}
-        tasksInQueue={4}
+        tasksInQueue={taskCounts.todo ?? 0}
+        inProgress={inProgressCount}
+        doneToday={doneCount}
+        totalTasks={totalTaskCount}
         onSettingsClick={() => setSettingsOpen(true)}
       />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />

@@ -56,7 +56,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-gray-500 hover:text-gray-400"
+              className="font-mono text-xs text-[#888] hover:text-zinc-400"
             >
               {task.linearIdentifier}
             </a>
@@ -78,7 +78,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           </span>
         ))}
         {task.updatedAt != null && (
-          <span className="text-xs text-gray-500">{formatDistanceToNow(task.updatedAt, { addSuffix: true })}</span>
+          <span className="text-xs text-[#555]">{formatDistanceToNow(task.updatedAt, { addSuffix: true })}</span>
         )}
       </div>
     </button>

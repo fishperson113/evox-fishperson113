@@ -115,6 +115,26 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* AGT-166: Dark scrollbar — match dark palette */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #222;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #333;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #222 #0a0a0a;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

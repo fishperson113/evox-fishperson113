@@ -262,7 +262,7 @@ export function AgentProfile({
                           rel="noopener noreferrer"
                           className="block text-sm text-zinc-400 hover:text-zinc-50"
                         >
-                          <span className="font-mono text-zinc-500">
+                          <span className="font-mono text-xs text-[#888]">
                             {t.linearIdentifier ?? "—"}
                           </span>{" "}
                           {t.title ?? "—"}
@@ -284,7 +284,7 @@ export function AgentProfile({
                       className="flex items-center gap-2 text-sm text-zinc-500"
                     >
                       {e.linearIdentifier && (
-                        <span className="font-mono text-zinc-600">
+                        <span className="font-mono text-xs text-[#888]">
                           {e.linearIdentifier}
                         </span>
                       )}
