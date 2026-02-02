@@ -685,6 +685,340 @@ http.route({
 });
 
 // ============================================================
+// AGT-174: UNIFIED MESSAGING ENDPOINTS
+// ============================================================
+
+/**
+ * POST /v2/comment — Post a comment using unified messaging
+ * Body: { taskId: "AGT-XXX" or convex ID, agentName: "sam", content: "..." }
+ */
+http.route({
+  path: "/v2/comment",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { taskId, agentName, content } = body;
+
+      if (!taskId || !agentName || !content) {
+        return new Response(
+          JSON.stringify({ error: "taskId, agentName, and content are required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Find task by linearIdentifier (AGT-XXX) or by convex ID
+      let actualTaskId: Id<"tasks"> | string = taskId;
+      if (taskId.toUpperCase().startsWith("AGT-")) {
+        const allTasks = await ctx.runQuery(api.tasks.list, {});
+        const task = allTasks.find(
+          (t: any) => t.linearIdentifier?.toUpperCase() === taskId.toUpperCase()
+        );
+        if (!task) {
+          return new Response(
+            JSON.stringify({ error: `Task ${taskId} not found` }),
+            { status: 404, headers: { "Content-Type": "application/json" } }
+          );
+        }
+        actualTaskId = task._id;
+      }
+
+      const result = await ctx.runMutation(api.messaging.postComment, {
+        taskId: actualTaskId as Id<"tasks">,
+        agentName,
+        content,
+      });
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Post unified comment error:", error);
+      return new Response(
+        JSON.stringify({
+          error: "Internal server error",
+          message: error instanceof Error ? error.message : String(error),
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /v2/comments?taskId=AGT-XXX — Get comments using unified messaging
+ */
+http.route({
+  path: "/v2/comments",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const taskId = url.searchParams.get("taskId");
+      const linearId = url.searchParams.get("linearId");
+
+      if (!taskId && !linearId) {
+        return new Response(
+          JSON.stringify({ error: "taskId or linearId query parameter is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (linearId) {
+        // Get by Linear identifier directly
+        const comments = await ctx.runQuery(api.messaging.getCommentsByLinearId, {
+          linearIdentifier: linearId.toUpperCase(),
+        });
+        return new Response(JSON.stringify({ comments }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Find task by linearIdentifier (AGT-XXX) or by convex ID
+      let actualTaskId: Id<"tasks"> | string = taskId!;
+      if (taskId!.toUpperCase().startsWith("AGT-")) {
+        const allTasks = await ctx.runQuery(api.tasks.list, {});
+        const task = allTasks.find(
+          (t: any) => t.linearIdentifier?.toUpperCase() === taskId!.toUpperCase()
+        );
+        if (!task) {
+          return new Response(
+            JSON.stringify({ error: `Task ${taskId} not found` }),
+            { status: 404, headers: { "Content-Type": "application/json" } }
+          );
+        }
+        actualTaskId = task._id;
+      }
+
+      const comments = await ctx.runQuery(api.messaging.getTaskComments, {
+        taskId: actualTaskId as Id<"tasks">,
+      });
+
+      return new Response(JSON.stringify({ comments }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get unified comments error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /v2/dm — Send a DM using unified messaging
+ * Body: { from: "sam", to: "leo", content: "...", taskId?: "AGT-XXX", priority?: "urgent" }
+ */
+http.route({
+  path: "/v2/dm",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { from, to, content, taskId, priority } = body;
+
+      if (!from || !to || !content) {
+        return new Response(
+          JSON.stringify({ error: "from, to, and content are required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Find task by linearIdentifier if provided
+      let relatedTaskId: Id<"tasks"> | undefined = undefined;
+      if (taskId) {
+        if (taskId.toUpperCase().startsWith("AGT-")) {
+          const allTasks = await ctx.runQuery(api.tasks.list, {});
+          const task = allTasks.find(
+            (t: any) => t.linearIdentifier?.toUpperCase() === taskId.toUpperCase()
+          );
+          if (task) {
+            relatedTaskId = task._id;
+          }
+        } else {
+          relatedTaskId = taskId as Id<"tasks">;
+        }
+      }
+
+      const result = await ctx.runMutation(api.messaging.sendDM, {
+        from,
+        to,
+        content,
+        relatedTaskId,
+        priority: priority || "normal",
+      });
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Send unified DM error:", error);
+      return new Response(
+        JSON.stringify({
+          error: "Internal server error",
+          message: error instanceof Error ? error.message : String(error),
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /v2/dms?agent=sam&unreadOnly=true — Get DMs using unified messaging
+ */
+http.route({
+  path: "/v2/dms",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const agent = url.searchParams.get("agent");
+      const unreadOnly = url.searchParams.get("unreadOnly") === "true";
+
+      if (!agent) {
+        return new Response(
+          JSON.stringify({ error: "agent query parameter is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const messages = await ctx.runQuery(api.messaging.getDMs, {
+        agentName: agent,
+        unreadOnly,
+      });
+
+      return new Response(JSON.stringify({ messages }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get unified DMs error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /v2/unread?agent=sam — Get unread count + messages for boot protocol
+ */
+http.route({
+  path: "/v2/unread",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const agent = url.searchParams.get("agent");
+
+      if (!agent) {
+        return new Response(
+          JSON.stringify({ error: "agent query parameter is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const unread = await ctx.runQuery(api.messaging.getUnread, {
+        agentName: agent,
+      });
+
+      return new Response(JSON.stringify(unread), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get unread error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /v2/mark-read — Mark a message as read
+ * Body: { messageId: "..." }
+ */
+http.route({
+  path: "/v2/mark-read",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { messageId } = body;
+
+      if (!messageId) {
+        return new Response(
+          JSON.stringify({ error: "messageId is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const result = await ctx.runMutation(api.messaging.markRead, {
+        messageId: messageId as Id<"unifiedMessages">,
+      });
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Mark read error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /v2/mark-all-read — Mark all messages as read for an agent
+ * Body: { agentName: "sam" }
+ */
+http.route({
+  path: "/v2/mark-all-read",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { agentName } = body;
+
+      if (!agentName) {
+        return new Response(
+          JSON.stringify({ error: "agentName is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const result = await ctx.runMutation(api.messaging.markAllRead, {
+        agentName,
+      });
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Mark all read error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+// ============================================================
 // WEBHOOK ENDPOINTS (AGT-128: Max Visibility Pipeline)
 // ============================================================
 

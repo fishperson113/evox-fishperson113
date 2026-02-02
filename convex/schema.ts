@@ -105,6 +105,36 @@ export default defineSchema({
     .index("by_task", ["taskId", "createdAt"])
     .index("by_agent", ["fromAgentId", "createdAt"]),
 
+  // AGT-174: Unified Communication System
+  // Single table for all agent messaging: comments, DMs, dispatches, system messages
+  // Replaces separate taskComments and agentMessages tables
+  unifiedMessages: defineTable({
+    fromAgent: v.string(),                    // "sam", "leo", "max", "son"
+    toAgent: v.optional(v.string()),          // DM target, undefined = task comment/broadcast
+    taskId: v.optional(v.id("tasks")),        // Task reference for comments
+    linearIdentifier: v.optional(v.string()), // "AGT-112" for display
+    content: v.string(),                      // Markdown, supports @mentions
+    type: v.union(
+      v.literal("comment"),                   // Comment on task
+      v.literal("dm"),                        // Direct message
+      v.literal("dispatch"),                  // Max dispatching task to agent
+      v.literal("system")                     // System notification
+    ),
+    mentions: v.optional(v.array(v.string())), // ["leo", "son"] parsed from @Leo @Son
+    priority: v.optional(v.union(
+      v.literal("normal"),
+      v.literal("urgent")
+    )),
+    read: v.optional(v.boolean()),            // For DMs/mentions tracking
+    createdAt: v.number(),
+  })
+    .index("by_task", ["taskId", "createdAt"])
+    .index("by_from_agent", ["fromAgent", "createdAt"])
+    .index("by_to_agent", ["toAgent", "createdAt"])
+    .index("by_to_agent_unread", ["toAgent", "read"])
+    .index("by_type", ["type", "createdAt"])
+    .index("by_linearId", ["linearIdentifier", "createdAt"]),
+
   // Agent-to-agent messages (AGT-123: handoff, update, request, fyi)
   agentMessages: defineTable({
     from: v.id("agents"),
