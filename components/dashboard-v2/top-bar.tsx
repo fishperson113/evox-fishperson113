@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Settings } from "lucide-react";
 
 interface TopBarProps {
   agentsActive?: number;
   tasksInQueue?: number;
+  onSettingsClick?: () => void;
 }
 
-export function TopBar({ agentsActive = 0, tasksInQueue = 0 }: TopBarProps) {
+export function TopBar({ agentsActive = 0, tasksInQueue = 0, onSettingsClick }: TopBarProps) {
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
 
@@ -41,6 +43,16 @@ export function TopBar({ agentsActive = 0, tasksInQueue = 0 }: TopBarProps) {
           <span className="h-2 w-2 rounded-full bg-green-500" />
           ONLINE
         </div>
+        {onSettingsClick && (
+          <button
+            type="button"
+            onClick={onSettingsClick}
+            className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-50"
+            aria-label="Settings"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+        )}
       </div>
     </header>
   );

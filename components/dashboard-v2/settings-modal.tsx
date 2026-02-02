@@ -1,0 +1,138 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Bell, Check, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface SettingsModalProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+export function SettingsModal({ open, onClose }: SettingsModalProps) {
+  const { toast } = useToast();
+  const settings = useQuery(api.settings.getAll);
+  const updateSetting = useMutation(api.settings.set);
+
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [eventToggles, setEventToggles] = useState({
+    taskCreated: true,
+    taskAssigned: true,
+    taskCompleted: true,
+    statusChanged: true,
+  });
+
+  useEffect(() => {
+    if (settings) {
+      setWebhookUrl(settings.slackWebhookUrl || "");
+      setEventToggles({
+        taskCreated: settings.slackEventTaskCreated ?? true,
+        taskAssigned: settings.slackEventTaskAssigned ?? true,
+        taskCompleted: settings.slackEventTaskCompleted ?? true,
+        statusChanged: settings.slackEventStatusChanged ?? true,
+      });
+    }
+  }, [settings]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateSetting({ key: "slackWebhookUrl", value: webhookUrl });
+      await updateSetting({ key: "slackEventTaskCreated", value: eventToggles.taskCreated });
+      await updateSetting({ key: "slackEventTaskAssigned", value: eventToggles.taskAssigned });
+      await updateSetting({ key: "slackEventTaskCompleted", value: eventToggles.taskCompleted });
+      await updateSetting({ key: "slackEventStatusChanged", value: eventToggles.statusChanged });
+      toast({ title: "Settings saved", description: "Slack integration settings have been updated." });
+    } catch {
+      toast({ title: "Error", description: "Failed to save settings.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    if (!webhookUrl) {
+      toast({ title: "No webhook URL", description: "Please enter a webhook URL first.", variant: "destructive" });
+      return;
+    }
+    setIsTesting(true);
+    try {
+      const res = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "🧪 Test message from EVOX Mission Control",
+          blocks: [{ type: "section", text: { type: "mrkdwn", text: "*EVOX Test*\nSlack integration working." } }],
+        }),
+      });
+      if (res.ok) toast({ title: "Test successful", description: "Check your Slack channel." });
+      else toast({ title: "Test failed", description: `Status ${res.status}`, variant: "destructive" });
+    } catch {
+      toast({ title: "Test failed", description: "Check webhook URL.", variant: "destructive" });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-zinc-800 p-4">
+          <h2 className="text-lg font-semibold text-zinc-50">Settings</h2>
+          <button type="button" onClick={onClose} className="rounded p-2 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-50" aria-label="Close">×</button>
+        </div>
+        <div className="p-4">
+          <Card className="border-zinc-800 bg-zinc-900/50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-purple-400" />
+                <CardTitle className="text-zinc-50">Slack Integration</CardTitle>
+              </div>
+              <CardDescription className="text-zinc-400">Configure webhook and notification preferences</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="webhookUrl" className="text-zinc-200">Webhook URL</Label>
+                <div className="flex gap-2">
+                  <Input id="webhookUrl" type="url" placeholder="https://hooks.slack.com/..." value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} className="flex-1 border-zinc-700 bg-zinc-800 text-zinc-100" />
+                  <Button variant="outline" onClick={handleTest} disabled={isTesting || !webhookUrl} className="border-zinc-700">{isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Test"}</Button>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Label className="text-zinc-200">Notification Events</Label>
+                {[
+                  { key: "taskCreated" as const, label: "Task Created" },
+                  { key: "taskAssigned" as const, label: "Task Assigned" },
+                  { key: "taskCompleted" as const, label: "Task Completed" },
+                  { key: "statusChanged" as const, label: "Status Changed" },
+                ].map(({ key, label }) => (
+                  <div key={key} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/50 p-3">
+                    <p className="text-sm font-medium text-zinc-100">{label}</p>
+                    <Switch checked={eventToggles[key]} onCheckedChange={(c) => setEventToggles((t) => ({ ...t, [key]: c }))} />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end pt-4">
+                <Button onClick={handleSave} disabled={isSaving} className="bg-purple-600 hover:bg-purple-700">
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                  Save Changes
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
