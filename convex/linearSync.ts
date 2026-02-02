@@ -222,8 +222,9 @@ export const syncAll = internalAction({
           const parsedAgent = parseAgentFromDescription(issue.description);
           const taskAgentName = parsedAgent ?? "max";
 
+          // AGT-175: Use taskAgentName for activity attribution (not hardcoded "max")
           return await ctx.runMutation(api.tasks.upsertByLinearId, {
-            agentName: "max",
+            agentName: taskAgentName,
             taskAgentName,
             projectId: evoxProject._id,
             linearId: issue.linearId,
