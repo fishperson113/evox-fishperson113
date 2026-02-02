@@ -6,10 +6,20 @@ import { Settings } from "lucide-react";
 interface TopBarProps {
   agentsActive?: number;
   tasksInQueue?: number;
+  inProgress?: number;
+  doneToday?: number;
+  totalTasks?: number;
   onSettingsClick?: () => void;
 }
 
-export function TopBar({ agentsActive = 0, tasksInQueue = 0, onSettingsClick }: TopBarProps) {
+export function TopBar({
+  agentsActive = 0,
+  tasksInQueue = 0,
+  inProgress = 0,
+  doneToday = 0,
+  totalTasks = 0,
+  onSettingsClick,
+}: TopBarProps) {
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
 
@@ -25,19 +35,26 @@ export function TopBar({ agentsActive = 0, tasksInQueue = 0, onSettingsClick }: 
   }, []);
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-800 bg-[#0a0a0a] px-4">
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#222] bg-[#0a0a0a] px-4">
       <div className="flex items-center gap-4">
-        <h1 className="text-sm font-bold tracking-wider text-zinc-50">EVOX COMMAND CENTER</h1>
-        <div className="flex items-center gap-3 text-xs text-zinc-400">
-          <span>{agentsActive} Agents Active</span>
-          <span className="text-zinc-600">|</span>
-          <span>{tasksInQueue} Tasks in Queue</span>
-        </div>
+        <h1 className="text-lg font-semibold text-zinc-50">EVOX</h1>
+        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Command Center</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded border border-[#222] bg-[#111] px-2 py-1 text-xs text-zinc-500">
+          In Progress <span className="font-medium text-zinc-50">{inProgress}</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded border border-[#222] bg-[#111] px-2 py-1 text-xs text-zinc-500">
+          Done Today <span className="font-medium text-zinc-50">{doneToday}</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded border border-[#222] bg-[#111] px-2 py-1 text-xs text-zinc-500">
+          Total <span className="font-medium text-zinc-50">{totalTasks}</span>
+        </span>
       </div>
       <div className="flex items-center gap-4">
         <div className="text-right text-xs">
           <div className="font-mono text-zinc-50">{time}</div>
-          <div className="text-zinc-500">{date}</div>
+          <div className="text-[#555]">{date}</div>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-[#888]">
           <span className="h-2 w-2 rounded-full bg-green-500" />
@@ -47,7 +64,7 @@ export function TopBar({ agentsActive = 0, tasksInQueue = 0, onSettingsClick }: 
           <button
             type="button"
             onClick={onSettingsClick}
-            className="rounded-lg p-2 text-gray-500 hover:bg-gray-800 hover:text-white"
+            className="rounded-lg p-2 text-zinc-500 hover:bg-[#1a1a1a] hover:text-zinc-50"
             aria-label="Settings"
           >
             <Settings className="h-5 w-5" />
