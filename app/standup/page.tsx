@@ -170,26 +170,64 @@ export default function StandupPage() {
     }
   }, [syncState]);
 
-  // Map Convex standup data to StandupAgentCard props
+  // AGT-142: Canonical standup agents — display "Max" not "Son", order Max → Sam → Leo
+  const STANDUP_DISPLAY_NAMES: Record<string, string> = {
+    Son: "Max",
+    son: "Max",
+    Max: "Max",
+    SAM: "Sam",
+    Sam: "Sam",
+    sam: "Sam",
+    LEO: "Leo",
+    Leo: "Leo",
+    leo: "Leo",
+  };
+  const STANDUP_ORDER = ["Max", "Sam", "Leo"];
+
   const agentCards = useMemo(() => {
     if (!standupData?.agents) return [];
-    return standupData.agents.map((report) => {
+    const toTask = (t: { id: string; title: string; linearIdentifier?: string | null }) => ({
+      id: t.id,
+      title: t.title,
+      identifier: sanitizeIdentifier(t.linearIdentifier),
+    });
+    const cards = standupData.agents.map((report) => {
       const color = roleToColor[report.agent.role] ?? "blue";
-      // BUG 2: identifier column ONLY linearIdentifier ?? "—", NEVER raw _id
-      const toTask = (t: { id: string; title: string; linearIdentifier?: string | null }) => ({
-        id: t.id,
-        title: t.title,
-        identifier: sanitizeIdentifier(t.linearIdentifier),
-      });
-      // Phase 0 bug 2: only agent NAME never agent ID in standup view
+      const rawName = report.agent.name ?? "Unknown";
+      const displayName = STANDUP_DISPLAY_NAMES[rawName] ?? rawName;
       return {
-        name: report.agent.name ?? "Unknown",
+        displayName,
+        rawName,
         avatar: report.agent.avatar ?? "?",
         color,
         done: report.completed.map(toTask),
         wip: report.inProgress.map(toTask),
         backlog: report.backlog.map(toTask),
         blocked: report.blocked.map(toTask),
+      };
+    });
+    // Sort: Max, Sam, Leo (fill missing with empty so we always show 3)
+    const byDisplay = new Map(cards.map((c) => [c.displayName, c]));
+    return STANDUP_ORDER.map((name) => {
+      const existing = byDisplay.get(name);
+      if (existing)
+        return {
+          name: existing.displayName,
+          avatar: existing.avatar,
+          color: existing.color,
+          done: existing.done,
+          wip: existing.wip,
+          backlog: existing.backlog,
+          blocked: existing.blocked,
+        };
+      return {
+        name,
+        avatar: name.charAt(0),
+        color: "blue" as const,
+        done: [],
+        wip: [],
+        backlog: [],
+        blocked: [],
       };
     });
   }, [standupData]);
