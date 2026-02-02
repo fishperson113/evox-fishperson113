@@ -17,15 +17,33 @@ interface AgentStripProps {
   onAgentClick: (agentId: Id<"agents">) => void;
 }
 
-/** AGT-170: 40px horizontal bar below header stats, above Kanban. bg-surface (#111), border-bottom 1px #222, gap 12px. */
-export function AgentStrip({ onAgentClick }: AgentStripProps) {
-  const stripAgents = useQuery(api.agents.listForStrip);
+type StripAgent = {
+  _id: Id<"agents">;
+  name: string;
+  role: string;
+  status: string;
+  avatar: string;
+  currentTaskIdentifier?: string | null;
+};
 
-  if (!stripAgents?.length) return null;
+/** AGT-170: 56px bar below header, above Kanban. Uses agents.list only so app works before Convex listForStrip is deployed. */
+export function AgentStrip({ onAgentClick }: AgentStripProps) {
+  const listAgents = useQuery(api.agents.list);
+
+  const agents: StripAgent[] = (Array.isArray(listAgents) ? listAgents : []).map((a) => ({
+    _id: a._id,
+    name: a.name,
+    role: a.role,
+    status: a.status,
+    avatar: a.avatar,
+    currentTaskIdentifier: null,
+  }));
+
+  if (!agents.length) return null;
 
   return (
     <div className="flex h-14 shrink-0 items-center gap-3 border-b border-[#222] bg-[#111] px-4">
-      {stripAgents.map((a) => {
+      {agents.map((a) => {
         const dot = statusDot[(a.status ?? "").toLowerCase()] ?? statusDot.offline;
         const label = a.currentTaskIdentifier ?? "Idle";
         return (

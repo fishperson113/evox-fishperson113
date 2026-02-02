@@ -36,7 +36,7 @@ export default function GlobalError({
               Try again
             </Button>
             <Button variant="ghost" asChild className="w-full">
-              <Link href="/dashboard">Go to Dashboard</Link>
+              <Link href="/">Go to Dashboard</Link>
             </Button>
           </div>
         </CardContent>

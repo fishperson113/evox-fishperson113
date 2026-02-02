@@ -24,7 +24,6 @@ export default function Home() {
   const [selectedAgentId, setSelectedAgentId] = useState<Id<"agents"> | null>(null);
 
   const agents = useQuery(api.agents.list);
-  const stripAgents = useQuery(api.agents.listForStrip);
   const dashboardStats = useQuery(api.dashboard.getStats);
 
   const agentsList = useMemo(() => {
@@ -39,10 +38,8 @@ export default function Home() {
 
   const selectedAgent = useMemo(() => {
     if (!selectedAgentId) return null;
-    const fromStrip = (stripAgents ?? []).find((a) => a._id === selectedAgentId);
-    const fromList = agentsList.find((a) => a._id === selectedAgentId);
-    return fromStrip ?? fromList ?? null;
-  }, [selectedAgentId, stripAgents, agentsList]);
+    return agentsList.find((a) => a._id === selectedAgentId) ?? null;
+  }, [selectedAgentId, agentsList]);
 
   const taskCounts = dashboardStats?.taskCounts ?? { backlog: 0, todo: 0, inProgress: 0, review: 0, done: 0 };
   const inProgressCount = (taskCounts.inProgress ?? 0) + (taskCounts.review ?? 0);
