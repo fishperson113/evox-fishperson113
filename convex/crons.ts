@@ -36,4 +36,14 @@ crons.cron(
   {}
 );
 
+// AGT-120: Auto Daily Standup Generation
+// Runs at 6:00 PM UTC (11:00 AM PST / 2:00 PM EST / end of Asia workday)
+// Generates standup summaries and pushes to Son
+crons.cron(
+  "daily-standup",
+  "0 18 * * *", // 6:00 PM UTC daily
+  internal.standup.generateDailyStandup,
+  {}
+);
+
 export default crons;
