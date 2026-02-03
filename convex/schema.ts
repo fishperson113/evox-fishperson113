@@ -28,6 +28,9 @@ export default defineSchema({
     lastSeen: v.number(),
     lastHeartbeat: v.optional(v.number()), // AGT-119: Last heartbeat timestamp
     linearUserId: v.optional(v.string()), // Linear user ID for API attribution
+    metadata: v.optional(v.object({
+      preferredModel: v.optional(v.union(v.literal("claude"), v.literal("codex"))),
+    })),
   })
     .index("by_status", ["status"])
     .index("by_name", ["name"]),
@@ -340,4 +343,11 @@ export default defineSchema({
     .index("by_agent_type", ["agentId", "type"])
     .index("by_agent_date", ["agentId", "date"])
     .index("by_type", ["type"]),
+
+  // Scratch pad for quick notes
+  scratchNotes: defineTable({
+    content: v.string(),
+    createdBy: v.optional(v.id("agents")),
+    updatedAt: v.number(),
+  }),
 });

@@ -183,6 +183,21 @@ export const updateSoul = mutation({
   },
 });
 
+// UPDATE - Preferred model
+export const updatePreferredModel = mutation({
+  args: {
+    agentId: v.id("agents"),
+    model: v.union(v.literal("claude"), v.literal("codex"))
+  },
+  handler: async (ctx, { agentId, model }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) throw new Error("Agent not found");
+    await ctx.db.patch(agentId, {
+      metadata: { ...agent.metadata, preferredModel: model }
+    });
+  },
+});
+
 // DELETE
 export const remove = mutation({
   args: { id: v.id("agents") },

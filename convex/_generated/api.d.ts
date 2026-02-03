@@ -27,6 +27,7 @@ import type * as messages from "../messages.js";
 import type * as messaging from "../messaging.js";
 import type * as notifications from "../notifications.js";
 import type * as projects from "../projects.js";
+import type * as scratchNotes from "../scratchNotes.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
 import type * as skills from "../skills.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   messaging: typeof messaging;
   notifications: typeof notifications;
   projects: typeof projects;
+  scratchNotes: typeof scratchNotes;
   seed: typeof seed;
   settings: typeof settings;
   skills: typeof skills;
