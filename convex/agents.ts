@@ -133,7 +133,7 @@ export const update = mutation({
   },
 });
 
-// UPDATE - Heartbeat
+// UPDATE - Heartbeat (full version with status)
 export const heartbeat = mutation({
   args: {
     id: v.id("agents"),
@@ -147,28 +147,68 @@ export const heartbeat = mutation({
   },
   handler: async (ctx, args) => {
     const { id, status, metadata } = args;
+    const now = Date.now();
 
-    // Update agent
+    // Update agent - AGT-190: Update both lastSeen AND lastHeartbeat
     await ctx.db.patch(id, {
       status,
-      lastSeen: Date.now(),
+      lastSeen: now,
+      lastHeartbeat: now,
     });
 
     // Record heartbeat
     await ctx.db.insert("heartbeats", {
       agent: id,
       status,
-      timestamp: Date.now(),
+      timestamp: now,
       metadata,
     });
   },
 });
 
-/** Update agent lastSeen (AGT-133: when sync runs, touch sync-runner agent) */
+/**
+ * AGT-190: Simple heartbeat mutation - just updates lastSeen timestamp
+ * Use this for lightweight "I'm alive" pings without changing status
+ */
+export const ping = mutation({
+  args: { agentId: v.id("agents") },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await ctx.db.patch(args.agentId, {
+      lastSeen: now,
+      lastHeartbeat: now,
+    });
+    return { success: true, lastSeen: now };
+  },
+});
+
+/**
+ * AGT-190: Set agent to offline manually
+ */
+export const setOffline = mutation({
+  args: { agentId: v.id("agents") },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await ctx.db.patch(args.agentId, {
+      status: "offline",
+      lastSeen: now,
+      lastHeartbeat: now,
+    });
+    return { success: true };
+  },
+});
+
+/** Update agent lastSeen (AGT-133: when sync runs, touch sync-runner agent)
+ * AGT-190: Also updates lastHeartbeat for consistency
+ */
 export const touchLastSeen = mutation({
   args: { agentId: v.id("agents") },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.agentId, { lastSeen: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(args.agentId, {
+      lastSeen: now,
+      lastHeartbeat: now,
+    });
   },
 });
 
