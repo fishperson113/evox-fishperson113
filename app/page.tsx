@@ -9,6 +9,7 @@ import { MissionQueue } from "@/components/dashboard-v2/mission-queue";
 import { SettingsModal } from "@/components/dashboard-v2/settings-modal";
 import { AgentSidebar } from "@/components/evox/AgentSidebar";
 import { ScratchPad } from "@/components/evox/ScratchPad";
+import { DispatchQueue } from "@/components/evox/DispatchQueue";
 import { AgentSettingsModal } from "@/components/evox/AgentSettingsModal";
 import { ShortcutsHelpModal } from "@/components/evox/ShortcutsHelpModal";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -40,6 +41,7 @@ export default function Home() {
   const [selectedAgentId, setSelectedAgentId] = useState<Id<"agents"> | null>(null);
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
   const [scratchPadOpen, setScratchPadOpen] = useState(false);
+  const [dispatchQueueOpen, setDispatchQueueOpen] = useState(false);
   const [agentSettingsId, setAgentSettingsId] = useState<Id<"agents"> | null>(null);
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
 
@@ -115,12 +117,16 @@ export default function Home() {
       <TaskDetailModal open={selectedTask !== null} task={selectedTask} onClose={() => setSelectedTask(null)} />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-col">
+        <div className="flex flex-col w-[220px]">
           <AgentSidebar
             selectedAgentId={selectedAgentId}
             onAgentClick={handleAgentClick}
             onAgentDoubleClick={handleAgentDoubleClick}
             className="flex-1"
+          />
+          <DispatchQueue
+            collapsed={!dispatchQueueOpen}
+            onToggle={() => setDispatchQueueOpen((prev) => !prev)}
           />
           <ScratchPad isOpen={scratchPadOpen} onToggle={() => setScratchPadOpen((prev) => !prev)} />
         </div>

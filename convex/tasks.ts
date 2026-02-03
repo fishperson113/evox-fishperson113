@@ -166,21 +166,17 @@ export const getGroupedByStatus = query({
   },
   handler: async (ctx, args) => {
     // Query each status separately using index (much more efficient)
-    const [backlog, todo, inProgress, review, doneAll] = await Promise.all([
+    const [backlog, todo, inProgress, review, done] = await Promise.all([
       ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "backlog")).order("desc").take(100),
       ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "todo")).order("desc").take(100),
       ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "in_progress")).order("desc").take(100),
       ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "review")).order("desc").take(100),
-      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "done")).order("desc").take(200),
+      // FIX: Don't filter done tasks by date - show all completed tasks
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "done")).order("desc").collect(),
     ]);
 
-    // Filter done by date range if provided
-    let done = doneAll;
-    if (args.startTs !== undefined && args.endTs !== undefined) {
-      done = doneAll.filter(
-        (t) => t.updatedAt >= args.startTs! && t.updatedAt <= args.endTs!
-      );
-    }
+    // NOTE: Date filter removed for done tasks - completed tasks should always show
+    // If date filtering is needed, use completedAt field instead of updatedAt
 
     // Filter by project if provided
     if (args.projectId) {
@@ -250,10 +246,16 @@ export const updateStatus = mutation({
 
     const updatedBy = await resolveAgentIdByName(ctx.db, args.agentName);
     const now = Date.now();
-    await ctx.db.patch(args.id, {
+
+    // Set completedAt when moving to done
+    const patchData: { status: typeof args.status; updatedAt: number; completedAt?: number } = {
       status: args.status,
       updatedAt: now,
-    });
+    };
+    if (args.status === "done") {
+      patchData.completedAt = now;
+    }
+    await ctx.db.patch(args.id, patchData);
 
     // Log activity using agentName from caller (not Linear API key)
     await ctx.db.insert("activities", {
@@ -850,5 +852,114 @@ export const backfillAgentName = mutation({
       total: allTasks.length,
       changes,
     };
+  },
+});
+
+// Mark task completed by Linear identifier (from GitHub webhook)
+export const markCompletedByIdentifier = mutation({
+  args: {
+    linearIdentifier: v.string(),
+    commitHash: v.string(),
+    agentName: v.string(),
+  },
+  handler: async (ctx, { linearIdentifier, commitHash, agentName }) => {
+    // Find task by linearIdentifier
+    const tasks = await ctx.db.query("tasks").collect();
+    const task = tasks.find(
+      (t) => t.linearIdentifier?.toUpperCase() === linearIdentifier.toUpperCase()
+    );
+
+    if (!task) {
+      console.log(`Task not found: ${linearIdentifier}`);
+      return null;
+    }
+
+    const now = Date.now();
+
+    // Update task status to done with completedAt timestamp
+    await ctx.db.patch(task._id, {
+      status: "done",
+      updatedAt: now,
+      completedAt: now,
+    });
+
+    // Find agent by name
+    const agents = await ctx.db.query("agents").collect();
+    const agent = agents.find(
+      (a) => a.name.toUpperCase() === agentName.toUpperCase()
+    );
+
+    // Log activity
+    if (agent) {
+      await ctx.db.insert("activityLogs", {
+        agentId: agent._id,
+        agentName: agent.name.toLowerCase(),
+        eventType: "completed",
+        taskId: task._id,
+        linearIdentifier,
+        toStatus: "done",
+        timestamp: now,
+      });
+
+      await ctx.db.insert("activityEvents", {
+        agentId: agent._id,
+        agentName: agent.name.toLowerCase(),
+        category: "task",
+        eventType: "completed",
+        title: `${agent.name.toUpperCase()} completed ${linearIdentifier}`,
+        description: task.title,
+        taskId: task._id,
+        linearIdentifier,
+        projectId: task.projectId,
+        metadata: {
+          commitHash,
+          source: "github-webhook",
+          toStatus: "done",
+        },
+        timestamp: now,
+      });
+    }
+
+    return task._id;
+  },
+});
+
+// Sync task status from Linear webhook
+export const syncStatusFromLinear = mutation({
+  args: {
+    linearId: v.string(),
+    status: v.string(),
+  },
+  handler: async (ctx, { linearId, status }) => {
+    // Find task by linearId
+    const task = await ctx.db
+      .query("tasks")
+      .withIndex("by_linearId", (q) => q.eq("linearId", linearId))
+      .first();
+
+    if (!task) {
+      console.log(`Task not found for linearId: ${linearId}`);
+      return null;
+    }
+
+    // Map Linear status to our status
+    const statusMap: Record<string, string> = {
+      "Backlog": "backlog",
+      "Todo": "todo",
+      "In Progress": "in_progress",
+      "In Review": "review",
+      "Done": "done",
+      "Canceled": "done",
+    };
+
+    const mappedStatus = statusMap[status] || "backlog";
+    const now = Date.now();
+
+    await ctx.db.patch(task._id, {
+      status: mappedStatus as "backlog" | "todo" | "in_progress" | "review" | "done",
+      updatedAt: now,
+    });
+
+    return task._id;
   },
 });

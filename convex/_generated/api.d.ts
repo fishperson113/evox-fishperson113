@@ -10,6 +10,7 @@
 
 import type * as activities from "../activities.js";
 import type * as activityEvents from "../activityEvents.js";
+import type * as activityLogs from "../activityLogs.js";
 import type * as agentActions from "../agentActions.js";
 import type * as agentMappings from "../agentMappings.js";
 import type * as agentMemory from "../agentMemory.js";
@@ -47,6 +48,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   activities: typeof activities;
   activityEvents: typeof activityEvents;
+  activityLogs: typeof activityLogs;
   agentActions: typeof agentActions;
   agentMappings: typeof agentMappings;
   agentMemory: typeof agentMemory;

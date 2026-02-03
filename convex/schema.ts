@@ -64,6 +64,7 @@ export default defineSchema({
     createdBy: v.id("agents"),
     createdAt: v.number(),
     updatedAt: v.number(),
+    completedAt: v.optional(v.number()), // When task was marked done
     // Linear integration fields
     linearId: v.optional(v.string()),
     linearIdentifier: v.optional(v.string()), // e.g., "AGT-72"
@@ -366,4 +367,28 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_agent", ["agentId", "status"])
     .index("by_created", ["createdAt"]),
+
+  // Activity logs (Linear-style events)
+  activityLogs: defineTable({
+    agentId: v.id("agents"),
+    agentName: v.string(),
+    eventType: v.union(
+      v.literal("created"),
+      v.literal("assigned"),
+      v.literal("moved"),
+      v.literal("completed"),
+      v.literal("commented")
+    ),
+    taskId: v.optional(v.id("tasks")),
+    linearIdentifier: v.optional(v.string()),
+    fromStatus: v.optional(v.string()),
+    toStatus: v.optional(v.string()),
+    assignedTo: v.optional(v.id("agents")),
+    comment: v.optional(v.string()),
+    timestamp: v.number(),
+  })
+    .index("by_timestamp", ["timestamp"])
+    .index("by_agent", ["agentId", "timestamp"])
+    .index("by_task", ["taskId", "timestamp"])
+    .index("by_type", ["eventType", "timestamp"]),
 });

@@ -40,6 +40,10 @@ http.route({
           pendingDispatches: pending.length,
           dispatches: pending.slice(0, 5),
           recentActivity: recentActivity.slice(0, 10),
+          webhooks: {
+            github: "https://gregarious-elk-556.convex.site/webhook/github",
+            linear: "https://gregarious-elk-556.convex.site/webhook/linear",
+          },
         }),
         {
           status: 200,
@@ -48,6 +52,107 @@ http.route({
       );
     } catch (error) {
       console.error("Status endpoint error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+// ============================================================
+// WEBHOOK HANDLERS (Phase 5: Execution Engine)
+// ============================================================
+
+/**
+ * POST /webhook/github — Handle GitHub push events
+ * Parses "closes AGT-XXX" from commits and marks tasks completed
+ */
+http.route({
+  path: "/webhook/github",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const event = request.headers.get("x-github-event");
+
+      if (event === "push") {
+        const commits = body.commits || [];
+        const results = [];
+
+        for (const commit of commits) {
+          const match = commit.message.match(/closes?\s+(AGT-\d+)/i);
+          if (match) {
+            const result = await ctx.runMutation(api.tasks.markCompletedByIdentifier, {
+              linearIdentifier: match[1].toUpperCase(),
+              commitHash: commit.id.slice(0, 7),
+              agentName: commit.author?.username || commit.author?.name || "unknown",
+            });
+            results.push({ ticket: match[1], completed: !!result });
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ processed: true, results }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ message: `Ignoring event: ${event}` }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    } catch (error) {
+      console.error("GitHub webhook error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /webhook/linear — Handle Linear issue updates
+ * Syncs status changes and creates dispatches for new assignments
+ */
+http.route({
+  path: "/webhook/linear",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      // Handle issue updates
+      if (body.type === "Issue" && body.action === "update") {
+        // Sync status if changed
+        if (body.data.state) {
+          await ctx.runMutation(api.tasks.syncStatusFromLinear, {
+            linearId: body.data.id,
+            status: body.data.state.name,
+          });
+        }
+      }
+
+      // Handle new issues — create dispatch if assigned to known agent
+      if (body.type === "Issue" && body.action === "create") {
+        const assigneeName = body.data.assignee?.name?.toUpperCase();
+        if (assigneeName && ["SAM", "LEO", "MAX"].includes(assigneeName)) {
+          await ctx.runMutation(api.dispatches.createFromLinear, {
+            agentName: assigneeName,
+            linearIdentifier: body.data.identifier,
+            title: body.data.title,
+            description: body.data.description || "",
+          });
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ received: true, type: body.type, action: body.action }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    } catch (error) {
+      console.error("Linear webhook error:", error);
       return new Response(
         JSON.stringify({ error: "Internal server error" }),
         { status: 500, headers: { "Content-Type": "application/json" } }

@@ -32,12 +32,13 @@ export const getStats = query({
     ).length;
 
     // Count tasks by status using index queries (no full table scan)
+    // FIX: Collect all done tasks for accurate count (was .take(100) causing mismatch)
     const [backlog, todo, inProgress, review, done] = await Promise.all([
       ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "backlog")).collect(),
       ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "todo")).collect(),
       ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "in_progress")).collect(),
       ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "review")).collect(),
-      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "done")).take(100), // limit done to recent 100
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "done")).collect(),
     ]);
     const taskCounts = {
       backlog: backlog.length,

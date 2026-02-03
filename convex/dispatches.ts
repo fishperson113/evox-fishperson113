@@ -94,15 +94,26 @@ export const fail = mutation({
   },
 });
 
-// List all pending dispatches
+// List all pending dispatches (with agent names)
 export const listPending = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
+    const dispatches = await ctx.db
       .query("dispatches")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .order("asc")
-      .collect();
+      .take(20);
+
+    // Enrich with agent names
+    return Promise.all(
+      dispatches.map(async (d) => {
+        const agent = await ctx.db.get(d.agentId);
+        return {
+          ...d,
+          agentName: agent?.name ?? "unknown",
+        };
+      })
+    );
   },
 });
 
@@ -138,5 +149,39 @@ export const get = query({
   args: { id: v.id("dispatches") },
   handler: async (ctx, { id }) => {
     return await ctx.db.get(id);
+  },
+});
+
+// Create dispatch from Linear webhook (auto-assign to agent by name)
+export const createFromLinear = mutation({
+  args: {
+    agentName: v.string(),
+    linearIdentifier: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, { agentName, linearIdentifier, title, description }) => {
+    // Find agent by name (case-insensitive)
+    const agents = await ctx.db.query("agents").collect();
+    const agent = agents.find(
+      (a) => a.name.toUpperCase() === agentName.toUpperCase()
+    );
+
+    if (!agent) {
+      console.log(`Agent not found: ${agentName}`);
+      return null;
+    }
+
+    return await ctx.db.insert("dispatches", {
+      agentId: agent._id,
+      command: "execute_ticket",
+      payload: JSON.stringify({
+        identifier: linearIdentifier,
+        title,
+        description: description || "",
+      }),
+      status: "pending",
+      createdAt: Date.now(),
+    });
   },
 });
