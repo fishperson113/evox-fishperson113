@@ -639,4 +639,44 @@ export default defineSchema({
     .index("by_enabled", ["enabled"])
     .index("by_template", ["taskTemplate"])
     .index("by_next_run", ["nextRun"]),
+
+  // AGT-222: Session Learning System — Auto-report, Feedback Loop, Team Sync
+  // Stores learnings from each agent session for team knowledge sharing
+  learnings: defineTable({
+    // Who learned this
+    agentName: v.string(),
+
+    // Task context
+    taskId: v.optional(v.string()),           // Linear identifier like "AGT-222"
+    taskTitle: v.string(),
+
+    // What was learned
+    summary: v.string(),                       // Brief summary of the work
+    filesChanged: v.array(v.string()),         // List of files modified
+    challenges: v.optional(v.string()),        // What was difficult
+    patterns: v.optional(v.string()),          // Patterns/best practices discovered
+
+    // Code snippets worth remembering
+    codeSnippets: v.optional(v.array(v.object({
+      file: v.string(),
+      code: v.string(),
+      explanation: v.string(),
+    }))),
+
+    // Feedback loop
+    feedbackGood: v.optional(v.string()),      // What went well
+    feedbackImprove: v.optional(v.string()),   // What could be improved
+
+    // Categorization
+    tags: v.array(v.string()),                 // e.g., ["convex", "schema", "api"]
+
+    // Metrics
+    timeSpentMinutes: v.optional(v.number()),
+
+    // Timestamps
+    createdAt: v.number(),
+  })
+    .index("by_agent", ["agentName", "createdAt"])
+    .index("by_task", ["taskId"])
+    .index("by_timestamp", ["createdAt"]),
 });

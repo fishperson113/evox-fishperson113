@@ -28,6 +28,7 @@ import type * as documents from "../documents.js";
 import type * as execution from "../execution.js";
 import type * as heartbeat from "../heartbeat.js";
 import type * as http from "../http.js";
+import type * as learnings from "../learnings.js";
 import type * as linearSync from "../linearSync.js";
 import type * as mentions from "../mentions.js";
 import type * as messages from "../messages.js";
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   execution: typeof execution;
   heartbeat: typeof heartbeat;
   http: typeof http;
+  learnings: typeof learnings;
   linearSync: typeof linearSync;
   mentions: typeof mentions;
   messages: typeof messages;
