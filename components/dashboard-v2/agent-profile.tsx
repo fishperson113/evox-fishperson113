@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { MemoryTab } from "@/components/evox/MemoryTab";
 
 interface AgentProfileProps {
   agentId: Id<"agents">;
@@ -334,45 +335,7 @@ export function AgentProfile({
         )}
 
         {activeTab === "memory" && (
-          <div className="space-y-4">
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Working (current session)</h4>
-              <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-500">{workingContent}</div>
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Daily notes</h4>
-              {Array.isArray(dailyNotes) && dailyNotes.length > 0 ? (
-                <ul className="mt-2 space-y-2">
-                  {dailyNotes.map((note: { _id: string; date?: string; content?: string; updatedAt?: number }) => (
-                    <li key={note._id} className="rounded border border-[#222] bg-[#111] px-2 py-2">
-                      <span className="font-mono text-xs text-[#888]">{note.date ?? "—"}</span>
-                      {note.updatedAt != null && (
-                        <span className="ml-2 text-xs text-[#555]">{formatDistanceToNow(note.updatedAt, { addSuffix: true })}</span>
-                      )}
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-400">{note.content ?? "—"}</p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-zinc-500">No daily notes</p>
-              )}
-            </div>
-            {Array.isArray(notificationsForAgent) && notificationsForAgent.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Notifications ({notificationCount})</h4>
-                <ul className="mt-2 space-y-1">
-                  {notificationsForAgent.slice(0, 10).map((n: { _id: string; type?: string; title?: string; message?: string; read?: boolean; createdAt?: number }) => (
-                    <li key={n._id} className="flex items-center gap-2 border-b border-[#1a1a1a] py-1.5 text-sm">
-                      {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-zinc-50" />}
-                      <span className="text-xs text-[#888]">{n.type ?? "—"}</span>
-                      <span className="truncate flex-1">{n.title ?? n.message ?? "—"}</span>
-                      {n.createdAt != null && <span className="text-xs text-[#555]">{formatDistanceToNow(n.createdAt, { addSuffix: true })}</span>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+          <MemoryTab agentId={agentId} agentName={name} />
         )}
 
         {activeTab === "heartbeat" && (

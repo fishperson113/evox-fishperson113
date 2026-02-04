@@ -1,0 +1,133 @@
+"use client";
+
+import { useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
+import { MarkdownEditor } from "./MarkdownEditor";
+
+interface WorkingMemoryPanelProps {
+  agentId: Id<"agents">;
+  content: string;
+  updatedAt?: number;
+  version?: number;
+  className?: string;
+}
+
+/**
+ * AGT-113: WORKING.md panel with view/edit modes
+ */
+export function WorkingMemoryPanel({
+  agentId,
+  content,
+  updatedAt,
+  version,
+  className,
+}: WorkingMemoryPanelProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(content);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const upsertMemory = useMutation(api.agentMemory.upsertMemory);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await upsertMemory({
+        agentId,
+        type: "working",
+        content: draft,
+        expectedVersion: version,
+      });
+      setEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setDraft(content);
+    setEditing(false);
+    setError(null);
+  };
+
+  // Handle Cmd+E to toggle edit mode
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "e" && (e.metaKey || e.ctrlKey) && !editing) {
+      e.preventDefault();
+      setEditing(true);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className={cn("h-64 rounded-lg border border-[#222] overflow-hidden", className)}>
+        <MarkdownEditor
+          content={draft}
+          onChange={setDraft}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          saving={saving}
+          placeholder="Enter working memory content..."
+        />
+        {error && (
+          <div className="px-3 py-1.5 bg-red-500/10 border-t border-red-500/20">
+            <span className="text-xs text-red-400">{error}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn("rounded-lg border border-[#222] bg-[#111]", className)}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-[#222] px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className="text-base">🧠</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#666]">
+            WORKING MEMORY
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {updatedAt != null && (
+            <span className="text-xs text-[#444]">
+              Updated {formatDistanceToNow(updatedAt, { addSuffix: true })}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="rounded px-2 py-1 text-xs text-[#555] hover:bg-[#222] hover:text-white"
+          >
+            Edit
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-h-48 overflow-y-auto p-3">
+        {content ? (
+          <div className="whitespace-pre-wrap text-sm text-zinc-400">{content}</div>
+        ) : (
+          <p className="text-sm text-[#555] italic">No working memory set. Click Edit to add.</p>
+        )}
+      </div>
+
+      {/* Keyboard hint */}
+      <div className="border-t border-[#1a1a1a] px-3 py-1">
+        <span className="text-[10px] text-[#333]">⌘E to edit</span>
+      </div>
+    </div>
+  );
+}

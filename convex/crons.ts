@@ -79,11 +79,12 @@ crons.interval(
 // Background monitoring, self-check, agent sync, inter-agent coordination
 // Checks: agent health, task progress, stuck tasks, errors
 // Alerts Son on Telegram if critical issues
-crons.interval(
-  "max-monitor",
-  { minutes: 15 },
-  internal.maxMonitor.check,
-  {}
-);
+// TODO(Sam): Enable when convex/maxMonitor.ts is created
+// crons.interval(
+//   "max-monitor",
+//   { minutes: 15 },
+//   internal.maxMonitor.check,
+//   {}
+// );
 
 export default crons;

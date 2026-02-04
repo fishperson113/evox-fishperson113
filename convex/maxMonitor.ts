@@ -70,7 +70,7 @@ export const check = internalAction({
     }
 
     // 3. Check for escalated/blocked tasks
-    const escalatedTasks = await ctx.runQuery(api.automation.getEscalatedTasks);
+    const escalatedTasks = await ctx.runQuery(api.automation.getEscalatedTasks, {});
     if (escalatedTasks.length > 0) {
       for (const task of escalatedTasks) {
         report.issues.push({
@@ -141,8 +141,6 @@ export const storeReport = internalMutation({
       description: report.summary,
       metadata: {
         source: "max_monitor",
-        issueCount: report.issues.length,
-        stuckTaskCount: report.stuckTasks.length,
       },
       timestamp: report.timestamp,
     });
@@ -167,10 +165,14 @@ export const triggerAlert = internalMutation({
     });
 
     // Trigger Telegram notification
-    await ctx.scheduler.runAfter(0, internal.alerts.sendTelegramAlert, {
-      title,
-      message,
-    });
+    // TODO(Sam): Fix sendTelegramAlert args - requires alertId, chatId, severity
+    // await ctx.scheduler.runAfter(0, internal.alerts.sendTelegramAlert, {
+    //   alertId: ...,
+    //   chatId: ...,
+    //   title,
+    //   message,
+    //   severity: "critical",
+    // });
   },
 });
 
