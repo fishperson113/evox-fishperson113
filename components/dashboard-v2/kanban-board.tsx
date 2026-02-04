@@ -27,17 +27,17 @@ interface KanbanBoardProps {
 export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "" }: KanbanBoardProps) {
   const byStatus = (status: KanbanStatus) => {
     if (status === "in_progress") {
-      return tasks.filter((t) => t.status === "in_progress" || t.status === "review");
+      return tasks.filter((t) => t.status?.toLowerCase() === "in_progress" || t.status?.toLowerCase() === "review");
     }
-    return tasks.filter((t) => t.status === status);
+    return tasks.filter((t) => t.status?.toLowerCase() === status.toLowerCase());
   };
 
   // AGT-184: Calculate counts for analytics panel (right side)
   const counts = useMemo(() => {
-    const backlog = tasks.filter((t) => t.status === "backlog").length;
-    const todo = tasks.filter((t) => t.status === "todo").length;
-    const inProgress = tasks.filter((t) => t.status === "in_progress" || t.status === "review").length;
-    const done = tasks.filter((t) => t.status === "done").length;
+    const backlog = tasks.filter((t) => t.status?.toLowerCase() === "backlog").length;
+    const todo = tasks.filter((t) => t.status?.toLowerCase() === "todo").length;
+    const inProgress = tasks.filter((t) => t.status?.toLowerCase() === "in_progress" || t.status?.toLowerCase() === "review").length;
+    const done = tasks.filter((t) => t.status?.toLowerCase() === "done").length;
     const total = backlog + todo + inProgress + done;
     const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
     return { backlog, todo, inProgress, done, total, completionRate };
@@ -48,7 +48,7 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
       {COLUMNS.map((col) => {
         const columnTasks = byStatus(col.status);
         const isEmpty = columnTasks.length === 0;
-        const isDone = col.status === "done";
+        const isDone = col.status?.toLowerCase() === "done";
         return (
           <div
             key={col.status}

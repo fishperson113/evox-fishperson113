@@ -142,9 +142,9 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     const tasks30d = tasks.filter(t => t.updatedAt > now - day30);
 
     // Completed tasks
-    const completed24h = tasks24h.filter(t => t.status === "done");
-    const completed7d = tasks7d.filter(t => t.status === "done");
-    const completed30d = tasks30d.filter(t => t.status === "done");
+    const completed24h = tasks24h.filter(t => t.status?.toLowerCase() === "done");
+    const completed7d = tasks7d.filter(t => t.status?.toLowerCase() === "done");
+    const completed30d = tasks30d.filter(t => t.status?.toLowerCase() === "done");
 
     // Tasks with errors/retries
     const withErrors = tasks.filter(t => t.retryCount && t.retryCount > 0 || t.lastError);
@@ -152,12 +152,12 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     const errors7d = withErrors.filter(t => t.updatedAt > now - day7);
 
     // Success rate (completed without errors / total attempted)
-    const attempted24h = tasks24h.filter(t => t.status === "done" || t.status === "in_progress");
+    const attempted24h = tasks24h.filter(t => t.status?.toLowerCase() === "done" || t.status?.toLowerCase() === "in_progress");
     const successRate24h = attempted24h.length > 0
       ? Math.round((completed24h.filter(t => !t.lastError && (!t.retryCount || t.retryCount === 0)).length / attempted24h.length) * 100)
       : 100;
 
-    const attempted7d = tasks7d.filter(t => t.status === "done" || t.status === "in_progress");
+    const attempted7d = tasks7d.filter(t => t.status?.toLowerCase() === "done" || t.status?.toLowerCase() === "in_progress");
     const successRate7d = attempted7d.length > 0
       ? Math.round((completed7d.filter(t => !t.lastError && (!t.retryCount || t.retryCount === 0)).length / attempted7d.length) * 100)
       : 100;
@@ -191,8 +191,8 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
       const dayStart = startOfDay(subDays(now, i)).getTime();
       const dayEnd = dayStart + day24h;
       const dayTasks = tasks.filter(t => t.updatedAt >= dayStart && t.updatedAt < dayEnd);
-      const dayCompleted = dayTasks.filter(t => t.status === "done" && !t.lastError);
-      const dayAttempted = dayTasks.filter(t => t.status === "done" || t.status === "in_progress");
+      const dayCompleted = dayTasks.filter(t => t.status?.toLowerCase() === "done" && !t.lastError);
+      const dayAttempted = dayTasks.filter(t => t.status?.toLowerCase() === "done" || t.status?.toLowerCase() === "in_progress");
       successByDay.push(dayAttempted.length > 0 ? (dayCompleted.length / dayAttempted.length) * 100 : 100);
     }
 
@@ -200,10 +200,10 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
     const agentMetrics = agents.map(agent => {
       const agentName = agent.name.toLowerCase();
       const agentTasks = tasks.filter(t => t.agentName?.toLowerCase() === agentName);
-      const agentCompleted = agentTasks.filter(t => t.status === "done");
+      const agentCompleted = agentTasks.filter(t => t.status?.toLowerCase() === "done");
       const agentErrors = agentTasks.filter(t => t.lastError || (t.retryCount && t.retryCount > 0));
       const successRate = agentCompleted.length > 0
-        ? Math.round(((agentCompleted.length - agentErrors.filter(t => t.status === "done").length) / agentCompleted.length) * 100)
+        ? Math.round(((agentCompleted.length - agentErrors.filter(t => t.status?.toLowerCase() === "done").length) / agentCompleted.length) * 100)
         : 100;
 
       // Per-agent success trend
@@ -212,7 +212,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
         const dayStart = startOfDay(subDays(now, i)).getTime();
         const dayEnd = dayStart + day24h;
         const dayTasks = agentTasks.filter(t => t.updatedAt >= dayStart && t.updatedAt < dayEnd);
-        const dayCompleted = dayTasks.filter(t => t.status === "done" && !t.lastError);
+        const dayCompleted = dayTasks.filter(t => t.status?.toLowerCase() === "done" && !t.lastError);
         agentSuccessTrend.push(dayTasks.length > 0 ? (dayCompleted.length / Math.max(1, dayTasks.length)) * 100 : 100);
       }
 

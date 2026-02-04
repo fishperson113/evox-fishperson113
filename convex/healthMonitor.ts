@@ -14,7 +14,7 @@
  * NO HUMAN IN THE LOOP unless absolutely necessary.
  */
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
-import { internal, api } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 // URLs to monitor
@@ -305,7 +305,31 @@ export const checkWebsite = internalAction({
           error: result.error || `HTTP ${result.httpCode}`,
         });
 
-        console.log(`[HealthMonitor] ALERT: ${result.name} is DOWN! → Notified MAX, dispatched Sam.`);
+        // 4. Create P0 bug ticket in Linear
+        const errorMsg = result.error || `HTTP ${result.httpCode}`;
+        const ticketResult = await ctx.runAction(internal.webhooks.createLinearBugTicket, {
+          title: `[P0] ${result.name} Down — ${errorMsg}`,
+          description: `## 🔴 Website Health Monitor Alert\n\n` +
+            `**Service:** ${result.name}\n` +
+            `**URL:** ${result.url}\n` +
+            `**Status:** DOWN\n` +
+            `**Error:** ${errorMsg}\n` +
+            `**HTTP Code:** ${result.httpCode || "N/A"}\n` +
+            `**Response Time:** ${result.responseTime}ms\n` +
+            `**Detected At:** ${new Date().toISOString()}\n\n` +
+            `## Next Steps\n\n` +
+            `1. Check Vercel deployment logs\n` +
+            `2. Check Convex dashboard for errors\n` +
+            `3. Verify DNS and SSL certificates\n` +
+            `4. Monitor recovery status\n\n` +
+            `Auto-dispatched to Sam for investigation.`,
+        });
+
+        if (ticketResult.success) {
+          console.log(`[HealthMonitor] Created Linear ticket: ${ticketResult.ticketId}`);
+        }
+
+        console.log(`[HealthMonitor] ALERT: ${result.name} is DOWN! → Notified MAX, dispatched Sam, created ticket.`);
       }
 
       // RECOVERED alert

@@ -105,4 +105,13 @@ crons.interval(
   {}
 );
 
+// AGT-252: Auto-Recruit Agents — Check every 15 minutes
+// Auto-spawns new agents when backlog is high or all agents busy
+crons.interval(
+  "auto-recruit-agents",
+  { minutes: 15 },
+  internal.agentTemplates.checkAndAutoSpawn,
+  {}
+);
+
 export default crons;

@@ -99,7 +99,7 @@ export function AutomationDashboard({ className }: AutomationDashboardProps) {
 
     // Success: completed without errors
     const success = tasksInRange.filter(
-      t => t.status === "done" && !t.lastError && (!t.retryCount || t.retryCount === 0)
+      t => t.status?.toLowerCase() === "done" && !t.lastError && (!t.retryCount || t.retryCount === 0)
     ).length;
 
     // Retries: tasks that had retries
@@ -109,7 +109,7 @@ export function AutomationDashboard({ className }: AutomationDashboardProps) {
 
     // Blocked: escalated or in review with approval pending
     const blocked = tasksInRange.filter(
-      t => t.escalatedAt || (t.status === "review" && t.requiresApproval && t.approvalStatus === "pending")
+      t => t.escalatedAt || (t.status?.toLowerCase() === "review" && t.requiresApproval && t.approvalStatus === "pending")
     ).length;
 
     const total = success + retries + blocked;

@@ -197,6 +197,159 @@ export const getConversation = query({
   },
 });
 
+/** Get all messages across the system with optional filters. AGT-237 */
+export const getAllMessages = query({
+  args: {
+    agentName: v.optional(v.string()),
+    messageType: v.optional(messageType),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 100;
+    let messages = await ctx.db
+      .query("agentMessages")
+      .order("desc")
+      .take(limit * 2); // Get more for filtering
+
+    // Filter by agent (from or to)
+    if (args.agentName) {
+      try {
+        const agentId = await resolveAgentIdByName(ctx.db, args.agentName);
+        messages = messages.filter(
+          (m) => m.from === agentId || m.to === agentId
+        );
+      } catch {
+        return [];
+      }
+    }
+
+    // Filter by type
+    if (args.messageType) {
+      messages = messages.filter((m) => m.type === args.messageType);
+    }
+
+    // Take limit after filtering
+    const limited = messages.slice(0, limit);
+
+    // Hydrate with agent data
+    const withAgents = await Promise.all(
+      limited.map(async (m) => {
+        const from = await ctx.db.get(m.from);
+        const to = await ctx.db.get(m.to);
+        const task = m.taskRef ? await ctx.db.get(m.taskRef) : null;
+        return {
+          ...m,
+          fromAgent: from ? { name: from.name, avatar: from.avatar } : null,
+          toAgent: to ? { name: to.name, avatar: to.avatar } : null,
+          taskRefDisplay: task
+            ? { linearIdentifier: task.linearIdentifier, title: task.title }
+            : null,
+        };
+      })
+    );
+    return withAgents;
+  },
+});
+
+/** Get analytics for communication log. AGT-237 */
+export const getAnalytics = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 500;
+    const messages = await ctx.db
+      .query("agentMessages")
+      .order("desc")
+      .take(limit);
+
+    // Message volume per agent
+    const volumeByAgent: Record<string, number> = {};
+    // Active pairs: "agent1<>agent2" -> count
+    const pairCounts: Record<string, number> = {};
+    // Response times: collect all response deltas
+    const responseTimes: number[] = [];
+
+    const agentCache = new Map<string, { name: string; avatar: string }>();
+    for (const msg of messages) {
+      // Get agent names
+      let fromName = agentCache.get(msg.from);
+      if (!fromName) {
+        const agent = await ctx.db.get(msg.from);
+        if (agent) {
+          fromName = { name: agent.name, avatar: agent.avatar };
+          agentCache.set(msg.from, fromName);
+        }
+      }
+
+      let toName = agentCache.get(msg.to);
+      if (!toName) {
+        const agent = await ctx.db.get(msg.to);
+        if (agent) {
+          toName = { name: agent.name, avatar: agent.avatar };
+          agentCache.set(msg.to, toName);
+        }
+      }
+
+      if (fromName && toName) {
+        // Volume by agent
+        volumeByAgent[fromName.name] = (volumeByAgent[fromName.name] || 0) + 1;
+
+        // Active pairs (normalize order)
+        const pair = [fromName.name, toName.name].sort().join("<>");
+        pairCounts[pair] = (pairCounts[pair] || 0) + 1;
+      }
+    }
+
+    // Calculate response times: find messages where B responds to A within 1 hour
+    const messagesByRecipient = new Map<string, typeof messages>();
+    for (const msg of messages) {
+      const key = msg.to;
+      if (!messagesByRecipient.has(key)) {
+        messagesByRecipient.set(key, []);
+      }
+      messagesByRecipient.get(key)!.push(msg);
+    }
+
+    for (const msg of messages) {
+      // Look for replies from recipient to sender within 1 hour
+      const potentialReplies = messagesByRecipient.get(msg.from) || [];
+      for (const reply of potentialReplies) {
+        if (
+          reply.from === msg.to &&
+          reply.timestamp > msg.timestamp &&
+          reply.timestamp - msg.timestamp < 3600000 // 1 hour
+        ) {
+          responseTimes.push(reply.timestamp - msg.timestamp);
+          break; // Only count first reply
+        }
+      }
+    }
+
+    // Convert to sorted arrays
+    const volumeByAgentSorted = Object.entries(volumeByAgent)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ agent: name, count }));
+
+    const topPairs = Object.entries(pairCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([pair, count]) => ({ pair, count }));
+
+    const avgResponseTime =
+      responseTimes.length > 0
+        ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
+        : 0;
+
+    return {
+      volumeByAgent: volumeByAgentSorted,
+      topPairs,
+      avgResponseTime,
+      totalMessages: messages.length,
+    };
+  },
+});
+
 /**
  * Clean up spam messages (from invalid/non-existent agents)
  * Run: npx convex run agentMessages:cleanupSpam

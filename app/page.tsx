@@ -25,6 +25,7 @@ import { SystemPausedBanner } from "@/components/evox/KillSwitch";
 import { HealthDashboard } from "@/components/evox/HealthDashboard";
 import { AutomationDashboard } from "@/components/evox/AutomationDashboard";
 import { DirectMessagesView } from "@/components/evox/DirectMessagesView";
+import { CommunicationLog } from "@/components/evox/CommunicationLog";
 import { ElonDashboard } from "@/components/evox/ElonDashboard";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
@@ -211,6 +212,9 @@ export default function Home() {
             )}
             {activeViewTab === "messages" && (
               <DirectMessagesView currentAgentName="max" className="h-full" />
+            )}
+            {activeViewTab === "comms" && (
+              <CommunicationLog className="h-full" />
             )}
             {activeViewTab === "metrics" && (
               <ElonDashboard className="h-full" />
