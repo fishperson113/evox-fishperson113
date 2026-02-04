@@ -1,21 +1,30 @@
+"use node";
+
 /**
  * Quinn Browser Actions
  * AGT-240: Convex actions for headless browser testing
+ *
+ * TEMPORARY: Disabled due to Playwright bundling issues with Convex.
+ * Playwright has complex dependencies (chromium-bidi) that can't be bundled.
+ * TODO: Move browser testing to external HTTP endpoint or standalone script.
  *
  * Provides Quinn with browser capabilities to:
  * - Capture screenshots of localhost:3000
  * - Check for console errors
  * - Verify UI elements exist
+ *
+ * NOTE: This file requires Node.js runtime for Playwright browser automation
  */
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import {
-  captureScreenshot,
-  checkConsoleErrors,
-  verifyElementExists,
-  comprehensiveCheck,
-} from "../lib/evox/quinn-browser";
+// TEMPORARILY DISABLED - Playwright bundling issues
+// import {
+//   captureScreenshot,
+//   checkConsoleErrors,
+//   verifyElementExists,
+//   comprehensiveCheck,
+// } from "../lib/evox/quinn-browser";
 
 /**
  * Capture a screenshot of a page

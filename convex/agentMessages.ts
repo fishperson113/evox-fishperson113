@@ -196,3 +196,23 @@ export const getConversation = query({
     return withAgents;
   },
 });
+
+/**
+ * Clean up spam messages (from invalid/non-existent agents)
+ * Run: npx convex run agentMessages:cleanupSpam
+ */
+export const cleanupSpam = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const allMessages = await ctx.db.query("agentMessages").collect();
+    let deleted = 0;
+    for (const msg of allMessages) {
+      const fromAgent = await ctx.db.get(msg.from);
+      if (!fromAgent) {
+        await ctx.db.delete(msg._id);
+        deleted++;
+      }
+    }
+    return { deleted, message: `Cleaned up ${deleted} spam messages` };
+  },
+});
