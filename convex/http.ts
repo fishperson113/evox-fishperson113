@@ -1232,6 +1232,173 @@ http.route({
   }),
 });
 
+/**
+ * POST /v2/sendMessage — Unified message sending (DM or channel)
+ * Body: { from: string, to?: string, channel?: string, message: string }
+ * - If 'to' is provided: sends DM to that agent
+ * - If 'channel' is provided: posts to channel
+ * - Must have either 'to' or 'channel'
+ */
+http.route({
+  path: "/v2/sendMessage",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { from, to, channel, message, taskId, priority } = body;
+
+      if (!from || !message) {
+        return new Response(
+          JSON.stringify({ error: "from and message are required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!to && !channel) {
+        return new Response(
+          JSON.stringify({ error: "Either 'to' (for DM) or 'channel' (for channel post) is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const now = Date.now();
+
+      // Find task by linearIdentifier if provided
+      let relatedTaskId: Id<"tasks"> | undefined = undefined;
+      if (taskId) {
+        if (taskId.toUpperCase().startsWith("AGT-")) {
+          const allTasks = await ctx.runQuery(api.tasks.list, {});
+          const task = allTasks.find(
+            (t: any) => t.linearIdentifier?.toUpperCase() === taskId.toUpperCase()
+          );
+          if (task) {
+            relatedTaskId = task._id;
+          }
+        } else {
+          relatedTaskId = taskId as Id<"tasks">;
+        }
+      }
+
+      // Find sender agent
+      const agents = await ctx.runQuery(api.agents.list);
+      const fromAgent = agents.find(
+        (a: any) => a.name.toLowerCase() === from.toLowerCase()
+      );
+
+      if (to) {
+        // Send DM
+        const result = await ctx.runMutation(api.messaging.sendDM, {
+          from,
+          to,
+          content: message,
+          relatedTaskId,
+          priority: priority || "normal",
+        });
+
+        return new Response(JSON.stringify({ success: true, type: "dm", ...result }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      } else if (channel) {
+        // Post to channel - log as activity event
+        await ctx.runMutation(api.activityEvents.log, {
+          agentId: fromAgent?._id,
+          agentName: from.toLowerCase(),
+          category: "communication",
+          eventType: "channel_message",
+          title: `${from.toUpperCase()} posted to #${channel}`,
+          description: message,
+          metadata: {
+            source: "peer_communication",
+            channel,
+          },
+          timestamp: now,
+        });
+
+        return new Response(JSON.stringify({ success: true, type: "channel", channel, from }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ error: "Invalid request" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    } catch (error) {
+      console.error("Send message error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /v2/getMessages?agent=sam — Get all messages for agent
+ * Returns DMs, @mentions, and relevant channel messages
+ */
+http.route({
+  path: "/v2/getMessages",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const agent = url.searchParams.get("agent");
+      const unreadOnly = url.searchParams.get("unreadOnly") === "true";
+
+      if (!agent) {
+        return new Response(
+          JSON.stringify({ error: "agent query parameter is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Get DMs
+      const dms = await ctx.runQuery(api.messaging.getDMs, {
+        agentName: agent,
+        unreadOnly,
+      });
+
+      // Get unread count
+      const unread = await ctx.runQuery(api.messaging.getUnread, {
+        agentName: agent,
+      });
+
+      // Get recent channel messages mentioning this agent
+      const now = Date.now();
+      const oneDayAgo = now - 24 * 60 * 60 * 1000;
+      const recentActivity = await ctx.runQuery(api.activityEvents.getByTimeRange, {
+        startTime: oneDayAgo,
+        endTime: now,
+        limit: 50,
+      });
+
+      const channelMentions = recentActivity.filter((a: any) =>
+        a.eventType === "channel_message" &&
+        a.description?.toLowerCase().includes(`@${agent.toLowerCase()}`)
+      );
+
+      return new Response(JSON.stringify({
+        dms,
+        channelMentions,
+        unreadCount: unread.count,
+        unreadMessages: unread.messages,
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get messages error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
 // ============================================================
 // WEBHOOK ENDPOINTS (AGT-128: Max Visibility Pipeline)
 // ============================================================
