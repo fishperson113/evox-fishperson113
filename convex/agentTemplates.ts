@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 // AGT-252: Agent Templates for Auto-Recruitment
 
@@ -243,5 +244,58 @@ export const checkSpawnNeeded = query({
       pendingDispatches: dispatches.length,
       recommendations,
     };
+  },
+});
+
+// AGT-252: Check and auto-spawn agents if needed (called by cron)
+export const checkAndAutoSpawn = internalAction({
+  handler: async (ctx) => {
+    const check = await ctx.runQuery(internal.agentTemplates.checkSpawnNeeded);
+
+    // Spawn agents if recommended
+    const spawned: Array<{ role: string; name: string }> = [];
+
+    for (const rec of check.recommendations) {
+      // Limit: max 2 agents per role
+      const currentCount = await ctx.runQuery(internal.agentTemplates.countAgentsByRole, { role: rec.role });
+      if (currentCount >= 2) {
+        console.log(`[AutoSpawn] Skipping ${rec.role}: already at max (2 agents)`);
+        continue;
+      }
+
+      try {
+        const result = await ctx.runMutation(internal.agentTemplates.autoSpawn, {
+          role: rec.role,
+          reason: rec.reason,
+        });
+
+        if (result.success) {
+          spawned.push({ role: rec.role, name: result.name });
+          console.log(`[AutoSpawn] Spawned ${result.name} (${rec.role}): ${rec.reason}`);
+        }
+      } catch (error) {
+        console.error(`[AutoSpawn] Failed to spawn ${rec.role}:`, error);
+      }
+    }
+
+    return {
+      success: true,
+      checked: Date.now(),
+      recommendations: check.recommendations.length,
+      spawned: spawned.length,
+      agents: spawned,
+    };
+  },
+});
+
+// Count agents by role (helper query)
+export const countAgentsByRole = query({
+  args: { role: v.string() },
+  handler: async (ctx, { role }) => {
+    const agents = await ctx.db
+      .query("agents")
+      .filter((q) => q.eq(q.field("role"), role))
+      .collect();
+    return agents.length;
   },
 });
