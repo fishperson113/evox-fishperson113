@@ -427,6 +427,17 @@ export default defineSchema({
     .index("by_task", ["taskId", "timestamp"])
     .index("by_timestamp", ["timestamp"]),
 
+  // AGT-211: Rate Limiting
+  rateLimits: defineTable({
+    agentName: v.string(),
+    hourlyTaskLimit: v.number(),          // Max tasks per hour
+    dailyTaskLimit: v.optional(v.number()), // Max tasks per day
+    maxTokensPerTask: v.number(),         // Max tokens per single task
+    maxCostPerDay: v.optional(v.number()), // Max USD cost per day
+    enabled: v.boolean(),
+    updatedAt: v.number(),
+  }).index("by_agent", ["agentName"]),
+
   // AGT-193: Cost Tracking — API token usage per agent per task
   costLogs: defineTable({
     agentName: v.string(),                    // "sam", "leo", "max"
