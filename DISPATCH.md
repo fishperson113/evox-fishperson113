@@ -1,6 +1,6 @@
 # Agent Dispatch Queue
 
-*Updated: Feb 4, 2026 — Session 17 (Max)*
+*Updated: Feb 4, 2026 — Session 18 (Sam)*
 
 ---
 
@@ -9,12 +9,12 @@
 ### Sam (Backend)
 | Ticket | Task | Status |
 |--------|------|--------|
-| **AGT-247** | Event Bus — Real-time Agent Notifications | ⏳ IN PROGRESS |
+| — | Queue empty | ✅ Idle |
 
 ### Leo (Frontend)
 | Ticket | Task | Status |
 |--------|------|--------|
-| — | Queue empty | ✅ Idle |
+| **AGT-237** | Real-time Agent Communication Log | ⏳ IN PROGRESS |
 
 ---
 
@@ -23,13 +23,12 @@
 ### Sam (Backend)
 | Ticket | Task | Priority |
 |--------|------|----------|
-| AGT-248 | Agent Mesh — P2P Communication | High |
-| AGT-249 | Self-Spawning Agents — Parallel Workers | High |
+| — | Awaiting assignment | — |
 
 ### Leo (Frontend)
 | Ticket | Task | Priority |
 |--------|------|----------|
-| AGT-237 | Real-time Agent Communication Log | High |
+| AGT-146 | Unified Dashboard — SiteGPT-inspired | High |
 
 ---
 
@@ -54,43 +53,48 @@
 
 ## Completed Today (Session 16-18)
 
+- ✅ AGT-250: Website Health Monitor — Auto-alert on Downtime (Sam)
+- ✅ AGT-249: Self-Spawning Agents — Parallel Workers (Sam)
+- ✅ AGT-248: Agent Mesh — P2P Communication (Sam)
+- ✅ AGT-247: Event Bus — Real-time Agent Notifications (Sam)
 - ✅ AGT-238: Elon Dashboard — First Principles Metrics (Leo)
 - ✅ AGT-236: Fix v2 Messaging Endpoints (Sam)
-- ✅ AGT-223: Max Autonomous Monitor (Sam)
 - ✅ AGT-234: Auto-handoff & Ping System (Sam)
+- ✅ AGT-233: Display Onboarded Agents (Leo)
+- ✅ AGT-232: agent-loop.sh completion fix (Sam)
+- ✅ AGT-231: Fix status comparisons — add toLowerCase() (Sam)
+- ✅ AGT-230: Public Demo Mode (Leo)
+- ✅ AGT-229: Priority Override (Sam)
+- ✅ AGT-228: Peer Communication (Sam)
 - ✅ AGT-226: Long-Running Session Mode (Sam)
 - ✅ AGT-225: QA Agent Integration (Sam)
-- ✅ AGT-228: Peer Communication (Sam)
-- ✅ AGT-229: Priority Override (Sam)
+- ✅ AGT-223: Max Autonomous Monitor (Sam)
+- ✅ AGT-245: Elon Agent Panel (Leo)
 - ✅ AGT-243: Add QA Role for Quinn (Sam)
 - ✅ AGT-242: Agent Performance Tracking (Sam)
 - ✅ AGT-241: Sync Genius DNA to Convex (Sam)
 - ✅ AGT-240: Quinn Browser Access (Sam)
 - ✅ AGT-239: Quinn Full Onboarding (Sam)
-- ✅ AGT-233: Display Onboarded Agents (Leo)
-- ✅ AGT-230: Public Demo Mode (Leo)
-- ✅ AGT-245: Elon Agent Panel (Leo)
 - ✅ AGT-235: isImminent bug fix (Leo)
 - ✅ AGT-200: Cost Dashboard Widget (Leo)
-- ✅ AGT-118: Agent DM UI (Leo)
-- ✅ AGT-113: Memory UI (Leo)
 - ✅ AGT-119: Staggered Heartbeat Scheduler (Sam)
-- ✅ AGT-218: Convex Crons 24/7 (Sam)
-- ✅ AGT-216: Auto-Recovery Self-Healing (Sam)
+- ✅ AGT-118: Agent DM UI (Leo)
+- ✅ AGT-116: Auto-Recovery Self-Healing (Sam)
 - ✅ AGT-115: @Mention System (Sam)
-- ✅ AGT-232: agent-loop.sh completion fix (Sam)
+- ✅ AGT-113: Memory UI (Leo)
+- ✅ AGT-218: Convex Crons 24/7 (Sam)
 
 ---
 
 ## Instructions
 
-**Sam:** Continue AGT-247 (Event Bus). Target: <3s notification latency.
+**Sam:** Queue clear. All P0/P1 tasks complete. Standby for next backend assignment or proactive tech debt cleanup.
 
-**Leo:** Queue empty. Awaiting next assignment or ready for AGT-237 if prioritized.
+**Leo:** Continue AGT-237 (Real-time Agent Communication Log). Then AGT-146 (Unified Dashboard).
 
-**Quinn:** QA patrol. Test Elon Dashboard (AGT-238). Report bugs.
+**Quinn:** QA patrol. Test recent backend changes (health monitor, event bus, agent mesh).
 
-**Max:** Monitor. Unblock. Coordinate.
+**Max:** Monitor. Coordinate. Assign new work as priorities emerge.
 
 ---
 
