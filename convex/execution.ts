@@ -147,9 +147,10 @@ export const getRecentFileActivity = query({
         .withIndex("by_task", (q) => q.eq("taskId", args.taskId))
         .order("desc");
     } else if (args.agentName) {
+      const agentName = args.agentName;
       query = ctx.db
         .query("fileActivity")
-        .withIndex("by_agent", (q) => q.eq("agentName", args.agentName))
+        .withIndex("by_agent", (q) => q.eq("agentName", agentName))
         .order("desc");
     } else {
       query = ctx.db
@@ -196,14 +197,16 @@ export const streamExecutionLogs = query({
         .withIndex("by_task", (q) => q.eq("taskId", args.taskId))
         .order("desc");
     } else if (args.agentName) {
+      const agentName = args.agentName;
       baseQuery = ctx.db
         .query("executionLogs")
-        .withIndex("by_agent", (q) => q.eq("agentName", args.agentName))
+        .withIndex("by_agent", (q) => q.eq("agentName", agentName))
         .order("desc");
     } else if (args.level) {
+      const level = args.level;
       baseQuery = ctx.db
         .query("executionLogs")
-        .withIndex("by_level", (q) => q.eq("level", args.level))
+        .withIndex("by_level", (q) => q.eq("level", level))
         .order("desc");
     } else {
       baseQuery = ctx.db
@@ -246,13 +249,15 @@ export const getExecutionSummary = query({
     // Get file activity
     let fileActivityQuery;
     if (args.taskId) {
+      const taskId = args.taskId;
       fileActivityQuery = ctx.db
         .query("fileActivity")
-        .withIndex("by_task", (q) => q.eq("taskId", args.taskId));
+        .withIndex("by_task", (q) => q.eq("taskId", taskId));
     } else if (args.agentName) {
+      const agentName = args.agentName;
       fileActivityQuery = ctx.db
         .query("fileActivity")
-        .withIndex("by_agent", (q) => q.eq("agentName", args.agentName));
+        .withIndex("by_agent", (q) => q.eq("agentName", agentName));
     } else {
       fileActivityQuery = ctx.db.query("fileActivity").withIndex("by_timestamp");
     }
@@ -263,13 +268,15 @@ export const getExecutionSummary = query({
     // Get execution logs
     let logsQuery;
     if (args.taskId) {
+      const taskId = args.taskId;
       logsQuery = ctx.db
         .query("executionLogs")
-        .withIndex("by_task", (q) => q.eq("taskId", args.taskId));
+        .withIndex("by_task", (q) => q.eq("taskId", taskId));
     } else if (args.agentName) {
+      const agentName = args.agentName;
       logsQuery = ctx.db
         .query("executionLogs")
-        .withIndex("by_agent", (q) => q.eq("agentName", args.agentName));
+        .withIndex("by_agent", (q) => q.eq("agentName", agentName));
     } else {
       logsQuery = ctx.db.query("executionLogs").withIndex("by_timestamp");
     }

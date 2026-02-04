@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
 
 /** Status colors per ticket spec */
 const statusColors: Record<string, string> = {
@@ -48,6 +49,8 @@ type SidebarAgent = {
   status: string;
   avatar: string;
   currentTaskIdentifier: string | null;
+  currentTaskTitle: string | null;
+  statusSince: number | null;
 };
 
 export function AgentSidebar({
@@ -56,7 +59,7 @@ export function AgentSidebar({
   onAgentDoubleClick,
   className = "",
 }: AgentSidebarProps) {
-  const listAgents = useQuery(api.agents.list);
+  const listAgents = useQuery(api.agents.listForStrip);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle click with delay to distinguish single vs double click
@@ -86,7 +89,9 @@ export function AgentSidebar({
       role: a.role,
       status: a.status,
       avatar: a.avatar,
-      currentTaskIdentifier: (a as { currentTaskIdentifier?: string | null }).currentTaskIdentifier ?? null,
+      currentTaskIdentifier: a.currentTaskIdentifier ?? null,
+      currentTaskTitle: a.currentTaskTitle ?? null,
+      statusSince: a.statusSince ?? null,
     }))
   );
 
@@ -154,9 +159,23 @@ export function AgentSidebar({
                   </span>
                 </div>
                 {working && agent.currentTaskIdentifier && (
-                  <div className="mt-0.5 truncate font-mono text-xs text-[#3b82f6]">
-                    {agent.currentTaskIdentifier}
-                  </div>
+                  <>
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      <span className="font-mono text-xs text-[#3b82f6]">
+                        {agent.currentTaskIdentifier}
+                      </span>
+                      {agent.statusSince && (
+                        <span className="text-[10px] text-[#555555]">
+                          {formatDistanceToNow(agent.statusSince, { addSuffix: false })}
+                        </span>
+                      )}
+                    </div>
+                    {agent.currentTaskTitle && (
+                      <div className="mt-0.5 truncate text-[11px] text-[#888888]">
+                        {agent.currentTaskTitle}
+                      </div>
+                    )}
+                  </>
                 )}
                 {!working && (
                   <div className="mt-0.5 text-xs text-[#555555]">

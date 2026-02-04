@@ -46,9 +46,11 @@ export const listForStrip = query({
     return Promise.all(
       agents.map(async (a) => {
         let currentTaskIdentifier: string | null = null;
+        let currentTaskTitle: string | null = null;
         if (a.currentTask) {
           const task = await ctx.db.get(a.currentTask);
           currentTaskIdentifier = task?.linearIdentifier ?? null;
+          currentTaskTitle = task?.title ?? null;
         }
         return {
           _id: a._id,
@@ -57,6 +59,8 @@ export const listForStrip = query({
           status: a.status,
           avatar: a.avatar,
           currentTaskIdentifier,
+          currentTaskTitle,
+          statusSince: a.statusSince ?? null,
         };
       })
     );
