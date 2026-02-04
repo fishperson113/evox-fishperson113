@@ -30,7 +30,7 @@
 ### Leo (Frontend)
 | Ticket | Task | Status |
 |--------|------|--------|
-| AGT-233 | Display Onboarded Agents | TODO |
+| AGT-233 | Display Onboarded Agents | ⏳ Frontend done, waiting for AGT-243 (Sam) |
 
 ---
 
@@ -39,6 +39,7 @@
 ### Sam (Backend)
 | Ticket | Task | Status |
 |--------|------|--------|
+| AGT-243 | Add QA Role to Schema for Quinn | TODO (blocks AGT-233) |
 | AGT-225 | QA Agent Integration | TODO |
 | AGT-228 | Peer Communication | TODO |
 | AGT-229 | Priority Override | TODO |
