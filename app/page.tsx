@@ -20,6 +20,7 @@ import { TaskDetailModal } from "@/components/dashboard-v2/task-detail-modal";
 import { ViewTabs, type MainViewTab } from "@/components/evox/ViewTabs";
 import { ExecutionTerminal } from "@/components/evox/ExecutionTerminal";
 import { ActivityFeed } from "@/components/evox/ActivityFeed";
+import { SystemPausedBanner } from "@/components/evox/KillSwitch";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
 
@@ -130,6 +131,7 @@ export default function Home() {
 
   return (
     <div className="flex h-screen flex-col bg-[#0a0a0a]">
+      <SystemPausedBanner />
       <NotificationTopBarWrapper
         agentsActive={activeCount}
         tasksInQueue={taskCounts.todo ?? 0}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
+import { KillSwitch } from "@/components/evox/KillSwitch";
 
 interface TopBarProps {
   agentsActive?: number;
@@ -62,6 +63,7 @@ export function TopBar({
           <div className="font-mono text-zinc-50">{time}</div>
           <div className="text-[#555]">{date}</div>
         </div>
+        <KillSwitch />
         <NotificationBell
           totalUnread={notificationTotalUnread}
           onBellClick={onBellClick}
