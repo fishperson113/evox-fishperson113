@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
+import { useViewerMode } from "@/contexts/ViewerModeContext";
 
 interface KillSwitchProps {
   className?: string;
@@ -19,12 +20,18 @@ interface KillSwitchProps {
 export function KillSwitch({ className }: KillSwitchProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [reason, setReason] = useState("");
+  const { isViewerMode } = useViewerMode();
 
   const systemState = useQuery(api.system.getSystemState);
   const killSwitch = useMutation(api.system.killSwitch);
   const resumeSystem = useMutation(api.system.resumeSystem);
 
   const isPaused = systemState?.paused ?? false;
+
+  // In viewer mode, don't show kill switch at all
+  if (isViewerMode) {
+    return null;
+  }
 
   const handleKill = async () => {
     if (!reason.trim()) return;

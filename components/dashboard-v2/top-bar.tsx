@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
 import { KillSwitch } from "@/components/evox/KillSwitch";
+import { useViewerMode } from "@/contexts/ViewerModeContext";
 
 interface TopBarProps {
   agentsActive?: number;
@@ -29,6 +30,7 @@ export function TopBar({
 }: TopBarProps) {
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
+  const { isViewerMode } = useViewerMode();
 
   useEffect(() => {
     const tick = () => {
@@ -63,6 +65,11 @@ export function TopBar({
           <div className="font-mono text-zinc-50">{time}</div>
           <div className="text-[#555]">{date}</div>
         </div>
+        {isViewerMode && (
+          <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[10px] font-medium text-blue-400">
+            VIEWER MODE
+          </span>
+        )}
         <KillSwitch />
         <NotificationBell
           totalUnread={notificationTotalUnread}
@@ -72,7 +79,7 @@ export function TopBar({
           <span className="h-2 w-2 rounded-full bg-green-500" />
           Online
         </div>
-        {onSettingsClick && (
+        {onSettingsClick && !isViewerMode && (
           <button
             type="button"
             onClick={onSettingsClick}

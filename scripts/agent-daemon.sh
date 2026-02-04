@@ -19,6 +19,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 POLL_INTERVAL=${POLL_INTERVAL:-30}  # seconds
 CONVEX_SITE_URL="${CONVEX_SITE_URL:-https://gregarious-elk-556.convex.site}"
 LOG_FILE="$PROJECT_DIR/.agent-daemon.log"
+RUNNING_FILE="$PROJECT_DIR/.agent-running"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
@@ -28,11 +29,22 @@ log "Agent Daemon starting..."
 log "Poll interval: ${POLL_INTERVAL}s"
 log "Convex URL: $CONVEX_SITE_URL"
 
-# Track running agents to prevent double-spawn
-declare -A RUNNING_AGENTS
+# Track running agents via file (macOS bash compat)
+is_agent_running() {
+  grep -q "^$1$" "$RUNNING_FILE" 2>/dev/null
+}
+
+mark_agent_running() {
+  echo "$1" >> "$RUNNING_FILE"
+}
+
+clear_agent_running() {
+  grep -v "^$1$" "$RUNNING_FILE" > "$RUNNING_FILE.tmp" 2>/dev/null && mv "$RUNNING_FILE.tmp" "$RUNNING_FILE" || true
+}
 
 cleanup() {
   log "Daemon shutting down..."
+  rm -f "$RUNNING_FILE"
   exit 0
 }
 
@@ -61,7 +73,7 @@ poll_and_dispatch() {
   log "Dispatch found: $DISPATCH_ID for $AGENT_NAME ($COMMAND)"
 
   # Check if agent already running
-  if [ "${RUNNING_AGENTS[$AGENT_NAME]}" = "1" ]; then
+  if is_agent_running "$AGENT_NAME"; then
     log "Agent $AGENT_NAME already running, skipping"
     return 0
   fi

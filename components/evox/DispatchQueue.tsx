@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useViewerMode } from "@/contexts/ViewerModeContext";
 import {
   DndContext,
   closestCenter,
@@ -67,6 +68,7 @@ const priorityConfig: Record<string, { label: string; color: string }> = {
  */
 export function DispatchQueue({ className, collapsed = false, onToggle }: DispatchQueueProps) {
   const [showAddForm, setShowAddForm] = useState(false);
+  const { isViewerMode } = useViewerMode();
 
   const pending = useQuery(api.dispatches.listActive) as Dispatch[] | undefined;
 
@@ -137,13 +139,15 @@ export function DispatchQueue({ className, collapsed = false, onToggle }: Dispat
             </span>
           )}
         </button>
-        <button
-          type="button"
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="rounded px-2 py-0.5 text-[10px] text-[#555555] transition-colors hover:bg-white/5 hover:text-[#888888]"
-        >
-          + Add
-        </button>
+        {!isViewerMode && (
+          <button
+            type="button"
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="rounded px-2 py-0.5 text-[10px] text-[#555555] transition-colors hover:bg-white/5 hover:text-[#888888]"
+          >
+            + Add
+          </button>
+        )}
       </div>
 
       {/* Add form (placeholder) */}

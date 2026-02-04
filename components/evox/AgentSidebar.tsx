@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { useViewerMode } from "@/contexts/ViewerModeContext";
 
 /** Status colors per ticket spec */
 const statusColors: Record<string, string> = {
@@ -61,6 +62,7 @@ export function AgentSidebar({
 }: AgentSidebarProps) {
   const listAgents = useQuery(api.agents.listForStrip);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { isViewerMode } = useViewerMode();
 
   // Handle click with delay to distinguish single vs double click
   const handleClick = useCallback((agentId: Id<"agents">) => {
@@ -75,12 +77,15 @@ export function AgentSidebar({
   }, [onAgentClick]);
 
   const handleDoubleClick = useCallback((agentId: Id<"agents">) => {
+    // Disable settings in viewer mode
+    if (isViewerMode) return;
+
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
       clickTimeoutRef.current = null;
     }
     onAgentDoubleClick?.(agentId);
-  }, [onAgentDoubleClick]);
+  }, [onAgentDoubleClick, isViewerMode]);
 
   const agents: SidebarAgent[] = sortAgents(
     (Array.isArray(listAgents) ? listAgents : []).map((a) => ({

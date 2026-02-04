@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "@/components/convex-provider";
 import { ProjectProvider } from "@/components/project-context";
+import { ViewerModeProvider } from "@/contexts/ViewerModeContext";
 import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
@@ -32,12 +33,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0a0a0a]`}
       >
         <ConvexClientProvider>
-          <ProjectProvider>
-            <div className="flex h-screen flex-col">
-              {children}
-            </div>
-            <Toaster />
-          </ProjectProvider>
+          <ViewerModeProvider>
+            <ProjectProvider>
+              <div className="flex h-screen flex-col">
+                {children}
+              </div>
+              <Toaster />
+            </ProjectProvider>
+          </ViewerModeProvider>
         </ConvexClientProvider>
       </body>
     </html>
