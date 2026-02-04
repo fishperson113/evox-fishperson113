@@ -306,6 +306,14 @@ http.route({
       } else {
         contextSections.push(`You are ${agent.name.toUpperCase()}, a ${agent.role} engineer.`);
       }
+
+      // AGT-241: Include Genius DNA if present
+      if (memoryContext?.soul?.geniusDNA) {
+        contextSections.push("");
+        contextSections.push("## Genius DNA");
+        contextSections.push(memoryContext.soul.geniusDNA);
+      }
+
       contextSections.push("");
 
       // === CURRENT STATE ===
