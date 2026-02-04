@@ -1034,11 +1034,13 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     try {
       const body = await request.json();
-      const { from, to, content, taskId, priority } = body;
+      // Accept both "content" and "message" for flexibility
+      const { from, to, content, message, taskId, priority } = body;
+      const messageContent = content || message;
 
-      if (!from || !to || !content) {
+      if (!from || !to || !messageContent) {
         return new Response(
-          JSON.stringify({ error: "from, to, and content are required" }),
+          JSON.stringify({ error: "from, to, and content (or message) are required" }),
           { status: 400, headers: { "Content-Type": "application/json" } }
         );
       }
@@ -1062,7 +1064,7 @@ http.route({
       const result = await ctx.runMutation(api.messaging.sendDM, {
         from,
         to,
-        content,
+        content: messageContent,
         relatedTaskId,
         priority: priority || "normal",
       });
@@ -2573,9 +2575,9 @@ http.route({
       const agent = agents.find((a: any) => a.name.toLowerCase() === to.toLowerCase());
       if (agent) {
         await ctx.runMutation(api.activityEvents.log, {
-          agentId: agent._id, agentName: to.toLowerCase(), category: "communication", eventType: "ping",
+          agentId: agent._id, category: "message", eventType: "ping",
           title: (from || "System") + " pinged " + to.toUpperCase(), description: message,
-          metadata: { source: "ping_system", pingType: pingType || "normal", from: from || "system" }, timestamp: Date.now(),
+          metadata: { source: "ping_system", pingType: pingType || "normal", from: from || "system" },
         });
       }
       return new Response(JSON.stringify({ success: true, ...result }), { status: 200, headers: { "Content-Type": "application/json" } });
