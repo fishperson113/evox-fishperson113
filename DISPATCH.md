@@ -14,7 +14,7 @@
 ### Leo (Frontend)
 | Ticket | Task | Status |
 |--------|------|--------|
-| **AGT-230** | Public Demo Mode — Security | TODO |
+| **AGT-230** | Public Demo Mode — Security | ✅ DONE |
 
 ---
 
@@ -64,6 +64,7 @@
 - ✅ Quinn upgraded to Bug Fixer (Max)
 - ✅ Shared skills.sh created (Max)
 - ✅ Culture system docs (Max)
+- ✅ AGT-230: Public Demo Mode (Leo)
 
 ---
 

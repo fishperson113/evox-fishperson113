@@ -34,6 +34,7 @@ const roleLabels: Record<string, string> = {
   pm: "PM",
   backend: "Backend",
   frontend: "Frontend",
+  qa: "QA",
 };
 
 type TabId = "overview" | "tasks" | "activity" | "memory" | "heartbeat" | "messages";

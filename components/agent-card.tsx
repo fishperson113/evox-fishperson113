@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 type AgentStatus = "online" | "idle" | "offline" | "busy";
-type AgentRole = "pm" | "backend" | "frontend";
+type AgentRole = "pm" | "backend" | "frontend" | "qa";
 
 /** AGT-147: Per-agent task counts for badge */
 export interface AgentTaskCounts {
@@ -37,12 +37,14 @@ const roleLabels: Record<AgentRole, string> = {
   pm: "Product Manager",
   backend: "Backend",
   frontend: "Frontend",
+  qa: "QA",
 };
 
 const roleColors: Record<AgentRole, string> = {
   pm: "bg-purple-500/10 text-purple-500 border-purple-500/20",
   backend: "bg-blue-500/10 text-blue-500 border-blue-500/20",
   frontend: "bg-green-500/10 text-green-500 border-green-500/20",
+  qa: "bg-amber-500/10 text-amber-500 border-amber-500/20",
 };
 
 /** Status dot colors (AGT-101): Online=green, Busy=yellow, Idle=gray, Offline=red */

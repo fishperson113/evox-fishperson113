@@ -17,10 +17,11 @@ const roleLabels: Record<string, string> = {
   pm: "PM",
   backend: "Backend",
   frontend: "Frontend",
+  qa: "QA",
 };
 
-/** AGT-177: Agent order always MAX → SAM → LEO */
-const AGENT_ORDER = ["max", "sam", "leo"];
+/** AGT-177/AGT-233: Agent order always MAX → SAM → LEO → QUINN */
+const AGENT_ORDER = ["max", "sam", "leo", "quinn"];
 function sortAgents<T extends { name: string }>(list: T[]): T[] {
   return [...list].sort((a, b) => {
     const i = AGENT_ORDER.indexOf(a.name.toLowerCase());

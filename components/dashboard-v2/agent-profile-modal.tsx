@@ -20,6 +20,7 @@ const roleLabels: Record<string, string> = {
   pm: "PM",
   backend: "Backend",
   frontend: "Frontend",
+  qa: "QA",
 };
 
 const statusDot: Record<string, string> = {
