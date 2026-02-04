@@ -178,8 +178,15 @@ export const getGroupedByStatus = query({
       ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "done")).order("desc").take(200),
     ]);
 
-    // NOTE: Date filter removed for done tasks - completed tasks should always show
-    // If date filtering is needed, use completedAt field instead of updatedAt
+    // AGT-189: Filter done tasks by completedAt (not updatedAt) if date range provided
+    // This ensures "Done Today" shows tasks completed today, not just updated today
+    let filteredDone = done;
+    if (args.startTs !== undefined && args.endTs !== undefined) {
+      filteredDone = done.filter(t => {
+        const completedAt = t.completedAt ?? t.updatedAt; // fallback for legacy tasks
+        return completedAt >= args.startTs! && completedAt <= args.endTs!;
+      });
+    }
 
     // Filter by project if provided
     if (args.projectId) {
@@ -188,11 +195,11 @@ export const getGroupedByStatus = query({
         todo: todo.filter(t => t.projectId === args.projectId),
         inProgress: inProgress.filter(t => t.projectId === args.projectId),
         review: review.filter(t => t.projectId === args.projectId),
-        done: done.filter(t => t.projectId === args.projectId),
+        done: filteredDone.filter(t => t.projectId === args.projectId),
       };
     }
 
-    return { backlog, todo, inProgress, review, done };
+    return { backlog, todo, inProgress, review, done: filteredDone };
   },
 });
 

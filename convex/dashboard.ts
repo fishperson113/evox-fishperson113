@@ -7,6 +7,7 @@
  * - Last sync time
  */
 import { query } from "./_generated/server";
+import { v } from "convex/values";
 
 // Agent is "active" if lastSeen within 5 minutes
 const ACTIVE_THRESHOLD_MS = 5 * 60 * 1000;
@@ -21,7 +22,12 @@ const ACTIVE_THRESHOLD_MS = 5 * 60 * 1000;
  * }
  */
 export const getStats = query({
-  handler: async (ctx) => {
+  args: {
+    // AGT-189: Optional date range to filter done tasks by completedAt
+    startTs: v.optional(v.number()),
+    endTs: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
     const now = Date.now();
 
     // Get agents (max 10 - we only have 3)
@@ -40,12 +46,22 @@ export const getStats = query({
       ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "review")).collect(),
       ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "done")).collect(),
     ]);
+
+    // AGT-189: Filter done tasks by completedAt if date range provided
+    let filteredDone = done;
+    if (args.startTs !== undefined && args.endTs !== undefined) {
+      filteredDone = done.filter(t => {
+        const completedAt = t.completedAt ?? t.updatedAt;
+        return completedAt >= args.startTs! && completedAt <= args.endTs!;
+      });
+    }
+
     const taskCounts = {
       backlog: backlog.length,
       todo: todo.length,
       inProgress: inProgress.length,
       review: review.length,
-      done: done.length,
+      done: filteredDone.length,
     };
 
     // Get last sync time from settings or most recent sync event

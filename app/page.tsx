@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, subDays } from "date-fns";
 import { NotificationTopBarWrapper } from "@/components/notification-topbar-wrapper";
 import { MissionQueue } from "@/components/dashboard-v2/mission-queue";
 import { SettingsModal } from "@/components/dashboard-v2/settings-modal";
@@ -46,7 +47,28 @@ export default function Home() {
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
 
   const agents = useQuery(api.agents.list);
-  const dashboardStats = useQuery(api.dashboard.getStats);
+
+  // AGT-189: Calculate date range for done tasks filtering (same as MissionQueue)
+  const { startTs, endTs } = useMemo(() => {
+    if (dateMode === "day") {
+      return {
+        startTs: startOfDay(date).getTime(),
+        endTs: endOfDay(date).getTime(),
+      };
+    } else if (dateMode === "week") {
+      return {
+        startTs: startOfWeek(date, { weekStartsOn: 1 }).getTime(),
+        endTs: endOfWeek(date, { weekStartsOn: 1 }).getTime(),
+      };
+    } else {
+      return {
+        startTs: subDays(new Date(), 30).getTime(),
+        endTs: Date.now(),
+      };
+    }
+  }, [date, dateMode]);
+
+  const dashboardStats = useQuery(api.dashboard.getStats, { startTs, endTs });
 
   const agentsList = useMemo(() => {
     if (!Array.isArray(agents) || agents.length === 0) return [];

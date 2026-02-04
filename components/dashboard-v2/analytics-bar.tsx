@@ -17,7 +17,7 @@ interface AnalyticsBarProps {
 
 /** AGT-184: Analytics bar — shows date-filtered stats matching Kanban columns */
 export function AnalyticsBar({ taskCounts }: AnalyticsBarProps) {
-  const dashboardStats = useQuery(api.dashboard.getStats);
+  const dashboardStats = useQuery(api.dashboard.getStats, {});
 
   // AGT-183: Use passed taskCounts (date-filtered from MissionQueue) to match Kanban columns
   // Only use dashboardStats for lastSyncTime, NOT for counts
