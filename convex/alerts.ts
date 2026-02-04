@@ -12,7 +12,7 @@
  * Channels: Telegram (P1), Slack, Email (P2), Browser (P3)
  */
 import { v } from "convex/values";
-import { mutation, query, internalMutation, internalAction, internalQuery } from "./_generated/server";
+import { mutation, query, internalMutation, internalAction, internalQuery, ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
@@ -710,7 +710,7 @@ export const getPreferencesInternal = internalQuery({
  * Called by cron every 5 minutes
  */
 export const checkStuckAgents = internalAction({
-  handler: async (ctx) => {
+  handler: async (ctx: ActionCtx) => {
     const now = Date.now();
     const STUCK_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes default
 

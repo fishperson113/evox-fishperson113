@@ -6,6 +6,16 @@ import { api } from "@/convex/_generated/api";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
+/** Activity event type */
+type ActivityEvent = {
+  _id: string;
+  eventType?: string;
+  agentName?: string;
+  linearIdentifier?: string;
+  timestamp?: number;
+  metadata?: { toStatus?: string; assignedTo?: string };
+};
+
 /** AGT-181: Activity feed with filter tabs */
 const EVENT_FILTERS = ["all", "completed", "created", "moved"] as const;
 type EventFilter = (typeof EVENT_FILTERS)[number];
@@ -46,7 +56,7 @@ export function ActivityPage() {
   const events = useQuery(api.activityEvents.list, { limit: 50 });
 
   // Filter events based on selected filter
-  const filteredEvents = events?.filter((event) => {
+  const filteredEvents = (events as ActivityEvent[] | undefined)?.filter((event) => {
     if (filter === "all") return true;
     const eventType = event.eventType ?? "";
     if (filter === "completed") return eventType === "completed";
@@ -140,7 +150,7 @@ export function ActivityPage() {
 
                 {/* Timestamp */}
                 <span className="shrink-0 text-[10px] text-[#555555]">
-                  {formatDistanceToNow(event.timestamp, { addSuffix: false })}
+                  {formatDistanceToNow(event.timestamp ?? Date.now(), { addSuffix: false })}
                 </span>
               </div>
             );

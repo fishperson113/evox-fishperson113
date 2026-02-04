@@ -21,6 +21,7 @@ import { ViewTabs, type MainViewTab } from "@/components/evox/ViewTabs";
 import { ExecutionTerminal } from "@/components/evox/ExecutionTerminal";
 import { ActivityFeed } from "@/components/evox/ActivityFeed";
 import { SystemPausedBanner } from "@/components/evox/KillSwitch";
+import { HealthDashboard } from "@/components/evox/HealthDashboard";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
 
@@ -186,6 +187,9 @@ export default function Home() {
               <div className="h-full p-4 overflow-auto">
                 <ActivityFeed limit={50} className="h-full" />
               </div>
+            )}
+            {activeViewTab === "health" && (
+              <HealthDashboard className="h-full" />
             )}
           </div>
         </main>

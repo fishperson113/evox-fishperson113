@@ -10,6 +10,16 @@ interface ActivityFeedProps {
   className?: string;
 }
 
+/** Activity event type */
+type ActivityEvent = {
+  _id: string;
+  eventType?: string;
+  agentName?: string;
+  linearIdentifier?: string;
+  timestamp?: number;
+  metadata?: { toStatus?: string; assignedTo?: string };
+};
+
 /** Event type icons and colors */
 const eventConfig: Record<string, { icon: string; color: string }> = {
   created: { icon: "🟢", color: "text-green-500" },
@@ -57,13 +67,13 @@ export function ActivityFeed({ limit = 20, className }: ActivityFeedProps) {
 
   return (
     <div className={cn("flex flex-col", className)}>
-      {events.map((event) => {
+      {(events as ActivityEvent[]).map((event) => {
         const eventType = event.eventType ?? "updated";
         const config = eventConfig[eventType] ?? { icon: "•", color: "text-[#888888]" };
         const verb = eventVerbs[eventType] ?? eventType;
         const agentName = (event.agentName ?? "unknown").toUpperCase();
         const ticketId = event.linearIdentifier ?? "";
-        const metadata = event.metadata as { toStatus?: string; assignedTo?: string } | undefined;
+        const metadata = event.metadata;
 
         // Build action string
         let actionDetail = "";
@@ -112,7 +122,7 @@ export function ActivityFeed({ limit = 20, className }: ActivityFeedProps) {
 
             {/* Timestamp */}
             <span className="shrink-0 text-[10px] text-[#555555]">
-              {formatDistanceToNow(event.timestamp, { addSuffix: false })}
+              {formatDistanceToNow(event.timestamp ?? Date.now(), { addSuffix: false })}
             </span>
           </div>
         );

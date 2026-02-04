@@ -11,6 +11,15 @@ import { cn } from "@/lib/utils";
 
 const MENTION_REGEX = /@(Max|Sam|Leo|Son|Ella|all)/gi;
 
+/** Comment type */
+type TaskComment = {
+  _id: string;
+  agentName?: string;
+  agentAvatar?: string;
+  content: string;
+  createdAt?: number;
+};
+
 /** Inline text: highlight @mentions in blue */
 function TextWithMentions({ children }: { children?: React.ReactNode }) {
   const s = children != null ? String(children) : "";
@@ -66,17 +75,17 @@ export function TaskCommentThread({ taskId }: TaskCommentThreadProps) {
         {!comments || comments.length === 0 ? (
           <p className="text-sm text-zinc-500 py-4">No comments yet. Agents will post updates here.</p>
         ) : (
-          comments.map((c) => (
+          (comments as TaskComment[]).map((c) => (
             <div key={c._id} className="flex gap-2">
               <Avatar className="h-7 w-7 shrink-0 border border-[#222]">
                 <AvatarFallback className="bg-[#111] text-[10px] text-zinc-400">
-                  {(c as { agentName?: string; agentAvatar?: string }).agentName?.slice(0, 2).toUpperCase() ?? "?"}
+                  {c.agentName?.slice(0, 2).toUpperCase() ?? "?"}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-semibold text-zinc-50">
-                    {(c as { agentName?: string }).agentName ?? "Unknown"}
+                    {c.agentName ?? "Unknown"}
                   </span>
                   <span
                     className="text-xs text-[#555]"

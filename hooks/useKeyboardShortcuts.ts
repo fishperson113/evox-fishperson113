@@ -58,6 +58,15 @@ export function useKeyboardShortcuts({
     { enableOnFormTags: false }
   );
 
+  useHotkeys(
+    "meta+5",
+    (e) => {
+      e.preventDefault();
+      onViewTabChange?.("health");
+    },
+    { enableOnFormTags: false }
+  );
+
   // Cmd+Shift+1/2/3 = switch to agent 1/2/3
   useHotkeys(
     "meta+shift+1",

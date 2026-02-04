@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-export type MainViewTab = "kanban" | "terminal" | "queue" | "activity";
+export type MainViewTab = "kanban" | "terminal" | "queue" | "activity" | "health";
 
 interface ViewTabsProps {
   activeTab: MainViewTab;
@@ -15,12 +15,13 @@ const tabs: { id: MainViewTab; label: string; shortcut: string }[] = [
   { id: "terminal", label: "Terminal", shortcut: "⌘2" },
   { id: "queue", label: "Queue", shortcut: "⌘3" },
   { id: "activity", label: "Activity", shortcut: "⌘4" },
+  { id: "health", label: "Health", shortcut: "⌘5" },
 ];
 
 /**
  * AGT-206: View Tabs
  * Tab toggle for main content area
- * Keyboard: Cmd+1/2/3/4 (handled by parent via useKeyboardShortcuts)
+ * Keyboard: Cmd+1/2/3/4/5 (handled by parent via useKeyboardShortcuts)
  */
 export function ViewTabs({ activeTab, onTabChange, className }: ViewTabsProps) {
   return (
