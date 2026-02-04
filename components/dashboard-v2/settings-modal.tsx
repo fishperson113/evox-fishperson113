@@ -10,13 +10,18 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Bell, Check, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useViewerMode } from "@/contexts/ViewerModeContext";
 
 interface SettingsModalProps {
   open: boolean;
   onClose: () => void;
 }
 
+/**
+ * AGT-230: Settings Modal — hidden in demo mode
+ */
 export function SettingsModal({ open, onClose }: SettingsModalProps) {
+  const { isViewerMode } = useViewerMode();
   const { toast } = useToast();
   const settings = useQuery(api.settings.getAll);
   const updateSetting = useMutation(api.settings.set);
@@ -83,7 +88,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     }
   };
 
-  if (!open) return null;
+  // AGT-230: Don't render modal in demo mode
+  if (!open || isViewerMode) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>

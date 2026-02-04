@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import ReactMarkdown from "react-markdown";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useViewerMode } from "@/contexts/ViewerModeContext";
 
 const MENTION_REGEX = /@(Max|Sam|Leo|Son|Ella|all)/gi;
 
@@ -44,8 +45,12 @@ interface TaskCommentThreadProps {
   taskId: Id<"tasks">;
 }
 
-/** AGT-114: Comment thread — chat-style, oldest first, add comment as Son, markdown + @mention highlight */
+/**
+ * AGT-114: Comment thread — chat-style, oldest first, add comment as Son, markdown + @mention highlight
+ * AGT-230: Add comment form hidden in demo mode
+ */
 export function TaskCommentThread({ taskId }: TaskCommentThreadProps) {
+  const { isViewerMode } = useViewerMode();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
 
@@ -115,22 +120,25 @@ export function TaskCommentThread({ taskId }: TaskCommentThreadProps) {
         )}
         <div ref={bottomRef} />
       </div>
-      <form onSubmit={handleSubmit} className="mt-2 flex gap-2">
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Add a comment..."
-          className="flex-1 min-h-[80px] rounded border border-[#222] bg-[#111] px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#333]"
-          rows={2}
-        />
-        <button
-          type="submit"
-          disabled={!draft.trim()}
-          className="shrink-0 self-end rounded border border-[#222] bg-[#222] px-3 py-2 text-xs font-medium text-zinc-50 hover:bg-[#333] disabled:opacity-50 disabled:pointer-events-none"
-        >
-          Add comment
-        </button>
-      </form>
+      {/* AGT-230: Hide comment form in demo mode */}
+      {!isViewerMode && (
+        <form onSubmit={handleSubmit} className="mt-2 flex gap-2">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Add a comment..."
+            className="flex-1 min-h-[80px] rounded border border-[#222] bg-[#111] px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#333]"
+            rows={2}
+          />
+          <button
+            type="submit"
+            disabled={!draft.trim()}
+            className="shrink-0 self-end rounded border border-[#222] bg-[#222] px-3 py-2 text-xs font-medium text-zinc-50 hover:bg-[#333] disabled:opacity-50 disabled:pointer-events-none"
+          >
+            Add comment
+          </button>
+        </form>
+      )}
     </div>
   );
 }

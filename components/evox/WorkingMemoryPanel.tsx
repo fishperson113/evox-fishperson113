@@ -7,6 +7,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { MarkdownEditor } from "./MarkdownEditor";
+import { useViewerMode } from "@/contexts/ViewerModeContext";
 
 interface WorkingMemoryPanelProps {
   agentId: Id<"agents">;
@@ -18,6 +19,7 @@ interface WorkingMemoryPanelProps {
 
 /**
  * AGT-113: WORKING.md panel with view/edit modes
+ * AGT-230: Edit button hidden in demo mode
  */
 export function WorkingMemoryPanel({
   agentId,
@@ -26,6 +28,7 @@ export function WorkingMemoryPanel({
   version,
   className,
 }: WorkingMemoryPanelProps) {
+  const { isViewerMode } = useViewerMode();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
   const [saving, setSaving] = useState(false);
@@ -105,13 +108,16 @@ export function WorkingMemoryPanel({
               Updated {formatDistanceToNow(updatedAt, { addSuffix: true })}
             </span>
           )}
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="rounded px-2 py-1 text-xs text-[#555] hover:bg-[#222] hover:text-white"
-          >
-            Edit
-          </button>
+          {/* AGT-230: Hide edit button in demo mode */}
+          {!isViewerMode && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded px-2 py-1 text-xs text-[#555] hover:bg-[#222] hover:text-white"
+            >
+              Edit
+            </button>
+          )}
         </div>
       </div>
 
@@ -124,10 +130,12 @@ export function WorkingMemoryPanel({
         )}
       </div>
 
-      {/* Keyboard hint */}
-      <div className="border-t border-[#1a1a1a] px-3 py-1">
-        <span className="text-[10px] text-[#333]">⌘E to edit</span>
-      </div>
+      {/* Keyboard hint — hidden in demo mode */}
+      {!isViewerMode && (
+        <div className="border-t border-[#1a1a1a] px-3 py-1">
+          <span className="text-[10px] text-[#333]">⌘E to edit</span>
+        </div>
+      )}
     </div>
   );
 }

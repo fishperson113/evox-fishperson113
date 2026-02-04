@@ -201,6 +201,7 @@ export function DispatchQueue({ className, collapsed = false, onToggle }: Dispat
 
 /** Sortable dispatch item */
 function SortableDispatchItem({ dispatch }: { dispatch: Dispatch }) {
+  const { isViewerMode } = useViewerMode();
   const {
     attributes,
     listeners,
@@ -245,15 +246,17 @@ function SortableDispatchItem({ dispatch }: { dispatch: Dispatch }) {
         dispatch.blocked && "bg-orange-500/5"
       )}
     >
-      {/* Drag handle */}
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        className="cursor-grab text-[#444444] hover:text-[#666666] active:cursor-grabbing"
-      >
-        ⠿
-      </button>
+      {/* Drag handle — hidden in viewer mode (AGT-230) */}
+      {!isViewerMode && (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="cursor-grab text-[#444444] hover:text-[#666666] active:cursor-grabbing"
+        >
+          ⠿
+        </button>
+      )}
 
       {/* Status dot */}
       <span className={cn("h-2 w-2 shrink-0 rounded-full", config.dot)} />

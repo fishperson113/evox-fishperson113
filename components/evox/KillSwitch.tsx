@@ -131,10 +131,12 @@ export function KillSwitch({ className }: KillSwitchProps) {
 /**
  * System Paused Banner - shows when system is paused
  * Should be rendered at top of page
+ * AGT-230: Hide resume button in viewer/demo mode
  */
 export function SystemPausedBanner() {
   const systemState = useQuery(api.system.getSystemState);
   const resumeSystem = useMutation(api.system.resumeSystem);
+  const { isViewerMode } = useViewerMode();
 
   if (!systemState?.paused) return null;
 
@@ -154,13 +156,15 @@ export function SystemPausedBanner() {
           {systemState.pauseReason} (paused at {pausedAt} by {systemState.pausedBy})
         </span>
       </div>
-      <button
-        type="button"
-        onClick={handleResume}
-        className="rounded-md border border-white/30 bg-white/10 px-4 py-1 text-sm font-medium transition-colors hover:bg-white/20"
-      >
-        RESUME SYSTEM
-      </button>
+      {!isViewerMode && (
+        <button
+          type="button"
+          onClick={handleResume}
+          className="rounded-md border border-white/30 bg-white/10 px-4 py-1 text-sm font-medium transition-colors hover:bg-white/20"
+        >
+          RESUME SYSTEM
+        </button>
+      )}
     </div>
   );
 }

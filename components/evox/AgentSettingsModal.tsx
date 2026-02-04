@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { useViewerMode } from "@/contexts/ViewerModeContext";
 
 interface AgentSettingsModalProps {
   open: boolean;
@@ -15,7 +16,11 @@ const EMOJI_OPTIONS = ["🤖", "👨‍💻", "👩‍💻", "🧑‍💼", "�
 const STATUS_OPTIONS = ["online", "idle", "busy", "offline"];
 const MODEL_OPTIONS = ["claude", "codex"] as const;
 
+/**
+ * AGT-230: Agent Settings Modal — hidden in demo mode
+ */
 export function AgentSettingsModal({ open, agentId, onClose }: AgentSettingsModalProps) {
+  const { isViewerMode } = useViewerMode();
   const agent = useQuery(api.agents.get, agentId ? { id: agentId } : "skip");
   const updateAgent = useMutation(api.agents.update);
   const updateStatus = useMutation(api.agents.updateStatus);
@@ -56,7 +61,8 @@ export function AgentSettingsModal({ open, agentId, onClose }: AgentSettingsModa
     }
   }, [agent]);
 
-  if (!open || !agentId) return null;
+  // AGT-230: Don't render modal in demo mode
+  if (!open || !agentId || isViewerMode) return null;
 
   const handleSave = async () => {
     if (!agentId) return;

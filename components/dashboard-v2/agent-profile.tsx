@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { MemoryTab } from "@/components/evox/MemoryTab";
+import { useViewerMode } from "@/contexts/ViewerModeContext";
 
 interface AgentProfileProps {
   agentId: Id<"agents">;
@@ -46,7 +47,10 @@ const TABS: { id: TabId; label: string; count?: number }[] = [
   { id: "messages", label: "Messages" },
 ];
 
-/** AGT-155: Agent Profile v2 — 6 tabs, surface all available data */
+/**
+ * AGT-155: Agent Profile v2 — 6 tabs, surface all available data
+ * AGT-230: Send message section hidden in demo mode
+ */
 export function AgentProfile({
   agentId,
   name,
@@ -56,6 +60,7 @@ export function AgentProfile({
   onClose,
   embedded = false,
 }: AgentProfileProps) {
+  const { isViewerMode } = useViewerMode();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [sendAsName, setSendAsName] = useState<string>("max");
   const [messageDraft, setMessageDraft] = useState("");
@@ -373,39 +378,41 @@ export function AgentProfile({
         )}
       </div>
 
-      {/* Send message — fixed at bottom */}
-      <div className="shrink-0 border-t border-[#222] p-4">
-        <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Send message</h4>
-        {Array.isArray(otherAgents) && otherAgents.length > 0 && (
-          <div className="mt-1 flex items-center gap-2">
-            <label className="text-xs text-zinc-500">Send as:</label>
-            <select
-              value={sendAsName}
-              onChange={(e) => setSendAsName(e.target.value)}
-              className="rounded-md border border-[#222] bg-[#111] px-2 py-1 text-xs text-zinc-50"
-            >
-              {otherAgents.map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        <textarea
-          placeholder="Type a message..."
-          value={messageDraft}
-          onChange={(e) => setMessageDraft(e.target.value)}
-          className="mt-2 w-full rounded-md border border-[#222] bg-[#111] px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-zinc-500 focus:outline-none"
-          rows={2}
-        />
-        <Button
-          type="button"
-          onClick={handleSendMessage}
-          disabled={!messageDraft.trim()}
-          className="mt-2 bg-zinc-50 text-[#0a0a0a] hover:bg-zinc-200"
-        >
-          Send
-        </Button>
-      </div>
+      {/* Send message — fixed at bottom, hidden in demo mode (AGT-230) */}
+      {!isViewerMode && (
+        <div className="shrink-0 border-t border-[#222] p-4">
+          <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Send message</h4>
+          {Array.isArray(otherAgents) && otherAgents.length > 0 && (
+            <div className="mt-1 flex items-center gap-2">
+              <label className="text-xs text-zinc-500">Send as:</label>
+              <select
+                value={sendAsName}
+                onChange={(e) => setSendAsName(e.target.value)}
+                className="rounded-md border border-[#222] bg-[#111] px-2 py-1 text-xs text-zinc-50"
+              >
+                {otherAgents.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <textarea
+            placeholder="Type a message..."
+            value={messageDraft}
+            onChange={(e) => setMessageDraft(e.target.value)}
+            className="mt-2 w-full rounded-md border border-[#222] bg-[#111] px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-zinc-500 focus:outline-none"
+            rows={2}
+          />
+          <Button
+            type="button"
+            onClick={handleSendMessage}
+            disabled={!messageDraft.trim()}
+            className="mt-2 bg-zinc-50 text-[#0a0a0a] hover:bg-zinc-200"
+          >
+            Send
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

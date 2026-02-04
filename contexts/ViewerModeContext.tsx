@@ -13,15 +13,24 @@ const ViewerModeContext = createContext<ViewerModeContextType>({
 });
 
 /**
- * Viewer Mode Provider
- * - Check URL param: ?mode=viewer
- * - Check localStorage for saved preference
- * - Provides read-only mode for public viewers
+ * AGT-230: Viewer Mode Provider — Public Demo Protection
+ * Priority order:
+ * 1. NEXT_PUBLIC_DEMO_MODE env var (forced demo mode for Vercel deployment)
+ * 2. URL param: ?mode=viewer or ?mode=readonly
+ * 3. localStorage (for admin toggle)
  */
 export function ViewerModeProvider({ children }: { children: ReactNode }) {
-  const [isViewerMode, setIsViewerMode] = useState(false);
+  // Check env var first — if set, always in demo mode
+  const envDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const [isViewerMode, setIsViewerMode] = useState(envDemoMode);
 
   useEffect(() => {
+    // If env var is set, always force demo mode
+    if (envDemoMode) {
+      setIsViewerMode(true);
+      return;
+    }
+
     // Check URL param
     const params = new URLSearchParams(window.location.search);
     const modeParam = params.get("mode");
@@ -36,7 +45,7 @@ export function ViewerModeProvider({ children }: { children: ReactNode }) {
     if (stored === "true") {
       setIsViewerMode(true);
     }
-  }, []);
+  }, [envDemoMode]);
 
   const setViewerMode = (value: boolean) => {
     setIsViewerMode(value);

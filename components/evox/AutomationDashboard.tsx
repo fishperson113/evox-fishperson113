@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useViewerMode } from "@/contexts/ViewerModeContext";
 
 interface AutomationDashboardProps {
   className?: string;
@@ -51,8 +52,10 @@ type AgentDoc = {
 /**
  * AGT-213: Automation Dashboard
  * Shows automation health: scheduled runs, success rate, pending approvals, blocked tasks
+ * AGT-230: Approve/Reject buttons hidden in demo mode
  */
 export function AutomationDashboard({ className }: AutomationDashboardProps) {
+  const { isViewerMode } = useViewerMode();
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
   const [now, setNow] = useState(Date.now());
 
@@ -282,20 +285,25 @@ export function AutomationDashboard({ className }: AutomationDashboardProps) {
                   <span className="text-xs text-[#555555]">
                     {formatDistanceToNow(task.updatedAt, { addSuffix: true })}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleApprove(task._id)}
-                    className="rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-400 hover:bg-emerald-500/30 transition-colors"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleReject(task._id)}
-                    className="rounded bg-red-500/20 px-2 py-1 text-xs text-red-400 hover:bg-red-500/30 transition-colors"
-                  >
-                    Reject
-                  </button>
+                  {/* AGT-230: Hide approve/reject in demo mode */}
+                  {!isViewerMode && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleApprove(task._id)}
+                        className="rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReject(task._id)}
+                        className="rounded bg-red-500/20 px-2 py-1 text-xs text-red-400 hover:bg-red-500/30 transition-colors"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { useViewerMode } from "@/contexts/ViewerModeContext";
 
 interface DMInputProps {
   onSend: (content: string, type: "handoff" | "update" | "request" | "fyi") => void;
@@ -12,6 +13,7 @@ interface DMInputProps {
 
 /**
  * AGT-118: DM message input with type selector
+ * AGT-230: Hidden in demo mode
  */
 export function DMInput({
   onSend,
@@ -19,8 +21,12 @@ export function DMInput({
   placeholder = "Type a message...",
   className,
 }: DMInputProps) {
+  const { isViewerMode } = useViewerMode();
   const [content, setContent] = useState("");
   const [type, setType] = useState<"handoff" | "update" | "request" | "fyi">("fyi");
+
+  // AGT-230: Don't render input in demo mode
+  if (isViewerMode) return null;
 
   const handleSend = useCallback(() => {
     const trimmed = content.trim();
