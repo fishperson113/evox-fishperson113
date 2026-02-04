@@ -17,6 +17,9 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { AgentProfileModal } from "@/components/dashboard-v2/agent-profile-modal";
 import { ActivityDrawer } from "@/components/dashboard-v2/activity-drawer";
 import { TaskDetailModal } from "@/components/dashboard-v2/task-detail-modal";
+import { ViewTabs, type MainViewTab } from "@/components/evox/ViewTabs";
+import { ExecutionTerminal } from "@/components/evox/ExecutionTerminal";
+import { ActivityFeed } from "@/components/evox/ActivityFeed";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
 
@@ -45,6 +48,7 @@ export default function Home() {
   const [dispatchQueueOpen, setDispatchQueueOpen] = useState(false);
   const [agentSettingsId, setAgentSettingsId] = useState<Id<"agents"> | null>(null);
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
+  const [activeViewTab, setActiveViewTab] = useState<MainViewTab>("kanban");
 
   const agents = useQuery(api.agents.list);
 
@@ -99,6 +103,7 @@ export default function Home() {
       setSettingsOpen(false);
       setActivityDrawerOpen(false);
     },
+    onViewTabChange: setActiveViewTab,
   });
 
   const handleAgentClick = (agentId: Id<"agents">) => {
@@ -153,14 +158,34 @@ export default function Home() {
           <ScratchPad isOpen={scratchPadOpen} onToggle={() => setScratchPadOpen((prev) => !prev)} />
         </div>
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          <MissionQueue
-            date={date}
-            dateMode={dateMode}
-            onDateModeChange={setDateMode}
-            onDateChange={setDate}
-            onTaskClick={handleTaskClick}
-            onAssigneeClick={(id) => handleAgentClick(id as Id<"agents">)}
-          />
+          <ViewTabs activeTab={activeViewTab} onTabChange={setActiveViewTab} />
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {activeViewTab === "kanban" && (
+              <MissionQueue
+                date={date}
+                dateMode={dateMode}
+                onDateModeChange={setDateMode}
+                onDateChange={setDate}
+                onTaskClick={handleTaskClick}
+                onAssigneeClick={(id) => handleAgentClick(id as Id<"agents">)}
+              />
+            )}
+            {activeViewTab === "terminal" && (
+              <div className="h-full p-4 overflow-auto">
+                <ExecutionTerminal className="h-full" />
+              </div>
+            )}
+            {activeViewTab === "queue" && (
+              <div className="h-full p-4 overflow-auto">
+                <DispatchQueue className="h-full" />
+              </div>
+            )}
+            {activeViewTab === "activity" && (
+              <div className="h-full p-4 overflow-auto">
+                <ActivityFeed limit={50} className="h-full" />
+              </div>
+            )}
+          </div>
         </main>
       </div>
 
