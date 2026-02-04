@@ -370,7 +370,7 @@ export const checkWebsite = internalAction({
  * Manual health check trigger (for testing)
  */
 export const triggerHealthCheck = internalAction({
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<any> => {
     return await ctx.runAction(internal.healthMonitor.checkWebsite);
   },
 });

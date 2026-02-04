@@ -1,115 +1,90 @@
-# EVOX Backend - Convex Functions
+# Welcome to your Convex functions directory!
 
-## Phase 1 Complete ✅
+Write your Convex functions here.
+See https://docs.convex.dev/functions for more.
 
-Backend infrastructure deployed by SAM.
+A query function that takes two arguments looks like:
 
-## Structure
+```ts
+// convex/myFunctions.ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
 
-### Schema (`schema.ts`)
-7 tables with proper indexes:
-- **agents** - Agent management (name, role, status, currentTask, avatar, lastSeen)
-- **tasks** - Task tracking (title, description, status, assignee, priority, timestamps)
-- **messages** - Team communication (from, content, channel, mentions, threads)
-- **activities** - Action logging (agent, action, target, metadata)
-- **notifications** - Alert system (to, type, title, message, read, relatedTask)
-- **documents** - Knowledge base (title, content, author, project)
-- **heartbeats** - Health monitoring (agent, status, timestamp, metadata)
+export const myQueryFunction = query({
+  // Validators for arguments.
+  args: {
+    first: v.number(),
+    second: v.string(),
+  },
 
-### CRUD Functions
+  // Function implementation.
+  handler: async (ctx, args) => {
+    // Read the database as many times as you need here.
+    // See https://docs.convex.dev/database/reading-data.
+    const documents = await ctx.db.query("tablename").collect();
 
-#### `agents.ts`
-- `create` - Create new agent
-- `list` - Get all agents
-- `get` - Get agent by ID
-- `getByStatus` - Filter by online/offline/busy
-- `updateStatus` - Update agent status
-- `assignTask` - Assign task to agent
-- `update` - Update agent details
-- `heartbeat` - Record agent heartbeat
-- `remove` - Delete agent
+    // Arguments passed from the client are properties of the args object.
+    console.log(args.first, args.second);
 
-#### `tasks.ts`
-- `create` - Create task (auto-logs activity, notifies assignee)
-- `list` - Get all tasks
-- `get` - Get task by ID
-- `getByStatus` - Filter by backlog/todo/in_progress/review/done
-- `getByAssignee` - Get tasks for specific agent
-- `getByPriority` - Filter by low/medium/high/urgent
-- `updateStatus` - Update status (auto-logs, notifies on review)
-- `assign` - Assign task (logs + notifies)
-- `update` - Update task details
-- `remove` - Delete task
+    // Write arbitrary JavaScript here: filter, aggregate, build derived data,
+    // remove non-public properties, or create new objects.
+    return documents;
+  },
+});
+```
 
-#### `messages.ts`
-- `send` - Send message (auto-creates mention notifications)
-- `list` - Get all messages
-- `get` - Get message by ID
-- `getByChannel` - Filter by general/dev/design
-- `getThread` - Get thread messages
-- `listWithAgents` - Messages with agent details populated
-- `edit` - Edit message
-- `remove` - Delete message
+Using this query function in a React component looks like:
 
-#### `activities.ts`
-- `log` - Log activity
-- `list` - Get all activities
-- `get` - Get activity by ID
-- `getByAgent` - Filter by agent
-- `listWithAgents` - Activities with agent details
-- `getByTimeRange` - Filter by time range
-- `getByAction` - Filter by action type
-- `cleanup` - Remove old activities
-- `remove` - Delete activity
+```ts
+const data = useQuery(api.myFunctions.myQueryFunction, {
+  first: 10,
+  second: "hello",
+});
+```
 
-#### `notifications.ts`
-- `create` - Create notification
-- `getByAgent` - Get all notifications for agent
-- `getUnread` - Get unread notifications
-- `getUnreadCount` - Count unread
-- `get` - Get notification by ID
-- `markAsRead` - Mark single as read
-- `markAllAsRead` - Mark all as read
-- `remove` - Delete notification
-- `clearRead` - Clear old read notifications
+A mutation function looks like:
 
-#### `documents.ts`
-- `create` - Create document (logs activity)
-- `list` - Get all documents
-- `get` - Get document by ID
-- `getByProject` - Filter by project
-- `getByAuthor` - Filter by author
-- `listWithAuthors` - Documents with author details
-- `update` - Update document (logs activity)
-- `remove` - Delete document
+```ts
+// convex/myFunctions.ts
+import { mutation } from "./_generated/server";
+import { v } from "convex/values";
 
-#### `seed.ts`
-- `seedDatabase` - Populate with initial data (3 agents, 4 tasks, messages, activities, docs)
-- `resetDatabase` - Clear all data (use with caution!)
+export const myMutationFunction = mutation({
+  // Validators for arguments.
+  args: {
+    first: v.string(),
+    second: v.string(),
+  },
 
-## Initial Data
+  // Function implementation.
+  handler: async (ctx, args) => {
+    // Insert or modify documents in the database here.
+    // Mutations can also read from the database like queries.
+    // See https://docs.convex.dev/database/writing-data.
+    const message = { body: args.first, author: args.second };
+    const id = await ctx.db.insert("messages", message);
 
-Seeds 3 agents:
-- **SON** 👨‍💼 (PM) - Project manager
-- **SAM** 🤖 (Backend) - Backend engineer
-- **LEO** 🦁 (Frontend) - Frontend engineer
+    // Optionally, return a value from your mutation.
+    return await ctx.db.get("messages", id);
+  },
+});
+```
 
-Seeds 4 tasks:
-- EVOX-1: Setup Convex schema
-- EVOX-2: Create backend CRUD functions
-- EVOX-3: Design Mission Control UI
-- EVOX-4: Implement real-time updates
+Using this mutation function in a React component looks like:
 
-## Next Steps
+```ts
+const mutation = useMutation(api.myFunctions.myMutationFunction);
+function handleButtonPress() {
+  // fire and forget, the most common way to use mutations
+  mutation({ first: "Hello!", second: "me" });
+  // OR
+  // use the result once the mutation has completed
+  mutation({ first: "Hello!", second: "me" }).then((result) =>
+    console.log(result),
+  );
+}
+```
 
-1. Initialize Convex: `npx convex dev`
-2. Seed database: Call `seedDatabase` mutation
-3. Frontend can now subscribe to real-time data
-4. Use queries for reads, mutations for writes
-
-## Territory Rules
-
-SAM (Backend): convex/, scripts/, lib/evox/
-LEO (Frontend): app/evox/, components/evox/
-
-Commit format: closes EVOX-XX
+Use the Convex CLI to push your functions to a deployment. See everything
+the Convex CLI can do by running `npx convex -h` in your project root
+directory. To learn more, launch the docs with `npx convex docs`.

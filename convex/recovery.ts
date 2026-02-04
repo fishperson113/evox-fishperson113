@@ -470,7 +470,7 @@ export const runRecoveryCheck: ReturnType<typeof internalAction> = internalActio
     // Run recovery check
     const result = await ctx.runMutation(internal.recovery.checkAndRestartCrashedAgents);
 
-    const actions = result.results.filter((r) => r.action !== "skipped");
+    const actions = result.results.filter((r: any) => r.action !== "skipped");
     if (actions.length > 0) {
       console.log(`[Recovery] Actions taken:`, actions);
     }
