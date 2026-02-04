@@ -2546,3 +2546,114 @@ http.route({
   }),
 });
 export default http;
+
+// ============================================================
+// AGT-234: AUTO-HANDOFF & PING SYSTEM
+// ============================================================
+
+/**
+ * POST /pingAgent — Send urgent notification to agent
+ */
+http.route({
+  path: "/pingAgent",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { from, to, message, taskId, pingType } = body;
+      if (!to || !message) {
+        return new Response(JSON.stringify({ error: "to and message required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const isUrgent = pingType === "urgent";
+      const content = isUrgent ? "🔔 PING: " + message : "📌 " + message;
+      const result = await ctx.runMutation(api.messaging.sendDM, {
+        from: from || "system", to, content, priority: isUrgent ? "urgent" : "normal", relatedTaskId: taskId,
+      });
+      const agents = await ctx.runQuery(api.agents.list);
+      const agent = agents.find((a: any) => a.name.toLowerCase() === to.toLowerCase());
+      if (agent) {
+        await ctx.runMutation(api.activityEvents.log, {
+          agentId: agent._id, agentName: to.toLowerCase(), category: "communication", eventType: "ping",
+          title: (from || "System") + " pinged " + to.toUpperCase(), description: message,
+          metadata: { source: "ping_system", pingType: pingType || "normal", from: from || "system" }, timestamp: Date.now(),
+        });
+      }
+      return new Response(JSON.stringify({ success: true, ...result }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }),
+});
+
+/**
+ * POST /handoff — Transfer work to another agent
+ */
+http.route({
+  path: "/handoff",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { from, to, taskId, message, reason } = body;
+      if (!from || !to) {
+        return new Response(JSON.stringify({ error: "from and to required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const agents = await ctx.runQuery(api.agents.list);
+      const toAgent = agents.find((a: any) => a.name.toLowerCase() === to.toLowerCase());
+      const fromAgent = agents.find((a: any) => a.name.toLowerCase() === from.toLowerCase());
+      if (!toAgent) {
+        return new Response(JSON.stringify({ error: "Target agent not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+      }
+      const now = Date.now();
+      const handoffMessage = message || from.toUpperCase() + " handed off work to you" + (reason ? ": " + reason : "");
+      await ctx.runMutation(api.messaging.sendDM, {
+        from, to, content: "🤝 HANDOFF: " + handoffMessage, priority: "normal", relatedTaskId: taskId,
+      });
+      await ctx.runMutation(api.activityEvents.log, {
+        agentId: fromAgent?._id || toAgent._id, agentName: from.toLowerCase(), category: "task", eventType: "handoff",
+        title: from.toUpperCase() + " handed off to " + to.toUpperCase(), description: handoffMessage,
+        metadata: { source: "handoff_system", fromAgent: from, toAgent: to, reason }, timestamp: now,
+      });
+      return new Response(JSON.stringify({ success: true, from, to, message: handoffMessage }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }),
+});
+
+/**
+ * POST /requestApproval — Ask Max for decision
+ */
+http.route({
+  path: "/requestApproval",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { from, taskId, question, options } = body;
+      if (!from || !question) {
+        return new Response(JSON.stringify({ error: "from and question required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const content = "❓ APPROVAL NEEDED from " + from.toUpperCase() + ": " + question + (options ? "\nOptions: " + options.join(", ") : "");
+      const result = await ctx.runMutation(api.messaging.sendDM, {
+        from, to: "max", content, priority: "normal", relatedTaskId: taskId,
+      });
+      const agents = await ctx.runQuery(api.agents.list);
+      const maxAgent = agents.find((a: any) => a.name === "MAX");
+      if (maxAgent) {
+        await ctx.runMutation(api.notifications.create, {
+          to: maxAgent._id, type: "review_request", title: "Approval Request from " + from.toUpperCase(),
+          message: question, relatedTask: taskId,
+        });
+      }
+      await ctx.runMutation(api.activityEvents.log, {
+        agentId: maxAgent?._id, agentName: "max", category: "communication", eventType: "approval_request",
+        title: from.toUpperCase() + " requested approval", description: question,
+        metadata: { source: "approval_system", from, options }, timestamp: Date.now(),
+      });
+      return new Response(JSON.stringify({ success: true, ...result, sentTo: "max" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }),
+});
