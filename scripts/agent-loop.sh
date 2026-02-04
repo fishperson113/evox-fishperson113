@@ -5,6 +5,7 @@
 # Example: ./scripts/agent-loop.sh sam
 #
 # Agent works on tasks continuously until queue is empty.
+# Includes: Lock file (prevent duplicates), Heartbeat updates
 
 set -e
 
@@ -17,10 +18,37 @@ fi
 AGENT=$(echo "$AGENT" | tr '[:upper:]' '[:lower:]')
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CONVEX_URL="https://gregarious-elk-556.convex.site"
+LOCK_FILE="$PROJECT_DIR/.lock-$AGENT"
 
 cd "$PROJECT_DIR"
 
-echo "=== $AGENT Agent Loop Starting ==="
+# === LOCK: Prevent duplicate processes ===
+if [ -f "$LOCK_FILE" ]; then
+  OLD_PID=$(cat "$LOCK_FILE")
+  if ps -p "$OLD_PID" > /dev/null 2>&1; then
+    echo "ERROR: $AGENT already running (PID $OLD_PID)"
+    echo "Kill it first: kill $OLD_PID"
+    exit 1
+  else
+    echo "Stale lock file found, removing..."
+    rm -f "$LOCK_FILE"
+  fi
+fi
+
+echo $$ > "$LOCK_FILE"
+trap "rm -f $LOCK_FILE" EXIT
+
+# === HEARTBEAT FUNCTION ===
+send_heartbeat() {
+  local status="$1"
+  local task="$2"
+  curl -s -X POST "$CONVEX_URL/api/heartbeat" \
+    -H "Content-Type: application/json" \
+    -d "{\"agentName\":\"$AGENT\",\"status\":\"$status\",\"statusReason\":\"$task\"}" > /dev/null 2>&1 || true
+}
+
+echo "=== $AGENT Agent Loop Starting (PID $$) ==="
+send_heartbeat "starting" "none"
 echo ""
 
 while true; do
@@ -32,12 +60,14 @@ while true; do
 
   # Check if we got a task
   if [ -z "$DISPATCH_ID" ] || [ "$DISPATCH_ID" = "null" ] || [ -z "$TICKET" ] || [ "$TICKET" = "null" ]; then
+    send_heartbeat "idle" "none"
     echo "No tasks for $AGENT. Checking again in 60s..."
     sleep 60
     continue
   fi
 
   echo "=== Task: $TICKET ==="
+  send_heartbeat "working" "$TICKET"
 
   # Mark dispatch as running
   curl -s "$CONVEX_URL/markDispatchRunning?dispatchId=$DISPATCH_ID" > /dev/null
