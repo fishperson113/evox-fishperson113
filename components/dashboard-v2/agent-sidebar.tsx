@@ -44,7 +44,7 @@ type SidebarAgent = {
   name: string;
   role: string;
   status: string;
-  avatar: string;
+  avatar?: string;
   currentTaskIdentifier: string | null;
 };
 
@@ -99,7 +99,7 @@ export function AgentSidebar({ selectedAgentId, onAgentClick, className = "" }: 
               )}
             >
               <span className="text-lg leading-none shrink-0" aria-hidden>
-                {a.avatar}
+                {a.avatar ?? a.name.charAt(0).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1 min-[1200px]:mt-1">
                 <div className="flex items-center gap-2 hidden min-[1200px]:flex">

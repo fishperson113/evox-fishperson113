@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query, internalAction } from "./_generated/server";
+import { mutation, query, internalAction, internalQuery, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 // AGT-252: Agent Templates for Auto-Recruitment
@@ -115,7 +115,7 @@ export const generateAgentName = query({
 });
 
 // Auto-spawn new agent based on conditions
-export const autoSpawn = mutation({
+export const autoSpawn = internalMutation({
   args: {
     role: v.string(),
     reason: v.string(),
@@ -157,15 +157,16 @@ export const autoSpawn = mutation({
     // Create agent
     const agentId = await ctx.db.insert("agents", {
       name: name.toUpperCase(),
-      role: template.role,
+      role: template.role as "pm" | "backend" | "frontend" | "qa",
       status: "idle",
-      currentTask: null,
+      currentTask: undefined,
       skills: template.skills,
       territory: template.territory,
       geniusDNA: template.geniusDNA,
       basePrompt: enhancedPrompt,
       spawnedAt: Date.now(),
       spawnReason: reason,
+      lastSeen: Date.now(),
     });
 
     // Log activity
@@ -190,7 +191,7 @@ export const autoSpawn = mutation({
 });
 
 // Check if we need more agents (cron job calls this)
-export const checkSpawnNeeded = query({
+export const checkSpawnNeeded = internalQuery({
   handler: async (ctx) => {
     const agents = await ctx.db.query("agents").collect();
     const dispatches = await ctx.db
@@ -224,7 +225,7 @@ export const checkSpawnNeeded = query({
     agents.forEach((a) => {
       const role = a.role || "general";
       totalByRole[role] = (totalByRole[role] || 0) + 1;
-      if (a.status === "busy" || a.status === "working") {
+      if (a.status === "busy") {
         busyByRole[role] = (busyByRole[role] || 0) + 1;
       }
     });
@@ -249,8 +250,18 @@ export const checkSpawnNeeded = query({
 
 // AGT-252: Check and auto-spawn agents if needed (called by cron)
 export const checkAndAutoSpawn = internalAction({
-  handler: async (ctx) => {
-    const check = await ctx.runQuery(internal.agentTemplates.checkSpawnNeeded);
+  handler: async (ctx): Promise<{
+    success: boolean;
+    checked: number;
+    recommendations: number;
+    spawned: number;
+    agents: Array<{ role: string; name: string }>;
+  }> => {
+    const check: {
+      currentAgents: number;
+      pendingDispatches: number;
+      recommendations: Array<{ role: string; reason: string }>;
+    } = await ctx.runQuery(internal.agentTemplates.checkSpawnNeeded);
 
     // Spawn agents if recommended
     const spawned: Array<{ role: string; name: string }> = [];
@@ -289,7 +300,7 @@ export const checkAndAutoSpawn = internalAction({
 });
 
 // Count agents by role (helper query)
-export const countAgentsByRole = query({
+export const countAgentsByRole = internalQuery({
   args: { role: v.string() },
   handler: async (ctx, { role }) => {
     const agents = await ctx.db

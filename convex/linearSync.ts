@@ -64,6 +64,9 @@ function mapLinearPriority(
   }
 }
 
+// Remove hardcoded ID
+// const EVOX_PROJECT_ID = "d5bf6ea1-9dcb-4fa7-96e8-66fa03746cfe";
+
 /**
  * Fetch Linear issues for EVOX project
  * AGT-161: Optimized to reduce API calls - uses GraphQL directly instead of N+1 SDK calls
@@ -73,8 +76,55 @@ async function fetchLinearIssues(apiKey: string): Promise<LinearIssueData[]> {
     throw new Error("LINEAR_API_KEY is required");
   }
 
+  // 1. Resolve Project ID
+  // Priority: Env Var -> "EVOX" name -> First Project found
+  let targetProjectId = process.env.LINEAR_PROJECT_ID;
+
+  if (!targetProjectId) {
+    const projectsQuery = `
+      query {
+        projects(first: 50) {
+          nodes {
+            id
+            name
+          }
+        }
+      }
+    `;
+
+    const projectResponse = await fetch("https://api.linear.app/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: apiKey,
+      },
+      body: JSON.stringify({ query: projectsQuery }),
+    });
+
+    if (!projectResponse.ok) {
+       console.error("Failed to fetch projects to resolve ID");
+    } else {
+      const projectResult = await projectResponse.json();
+      const projects = projectResult.data?.projects?.nodes || [];
+      
+      const evoxProject = projects.find((p: any) => p.name.toLowerCase() === "evox");
+      if (evoxProject) {
+        targetProjectId = evoxProject.id;
+        console.log(`[LinearSync] Found 'EVOX' project: ${targetProjectId}`);
+      } else if (projects.length > 0) {
+        targetProjectId = projects[0].id;
+        console.log(`[LinearSync] Defaulting to first project: ${projects[0].name} (${targetProjectId})`);
+      }
+    }
+  }
+
+  if (!targetProjectId) {
+    console.error("[LinearSync] No project found to sync issues from.");
+    return [];
+  }
+
+  // 2. Fetch Issues for the resolved Project ID
   // Use GraphQL directly to fetch all data in a single request
-  // This reduces ~150+ API calls to just 1
   const query = `
     query GetEVOXIssues($projectId: ID!) {
       issues(filter: { project: { id: { eq: $projectId } } }, includeArchived: false, first: 100) {
@@ -109,7 +159,7 @@ async function fetchLinearIssues(apiKey: string): Promise<LinearIssueData[]> {
     },
     body: JSON.stringify({
       query,
-      variables: { projectId: EVOX_PROJECT_ID },
+      variables: { projectId: targetProjectId },
     }),
   });
 

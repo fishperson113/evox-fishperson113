@@ -16,7 +16,7 @@ interface AgentProfileProps {
   name: string;
   role: string;
   status: string;
-  avatar: string;
+  avatar?: string;
   onClose: () => void;
   /** AGT-173: When true, omit header (used inside context panel) */
   embedded?: boolean;
@@ -62,6 +62,7 @@ export function AgentProfile({
   embedded = false,
 }: AgentProfileProps) {
   const { isViewerMode } = useViewerMode();
+  const displayAvatar = avatar ?? name.charAt(0).toUpperCase();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [sendAsName, setSendAsName] = useState<string>("max");
   const [messageDraft, setMessageDraft] = useState("");
@@ -79,10 +80,13 @@ export function AgentProfile({
   const notificationsForAgent = useQuery(api.notifications.getByAgent, { agent: agentId });
 
   // AGT-245: Brutal metrics - Cost tracking (last 7 days)
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  // Fix: Use stable timestamps to prevent infinite re-renders caused by Date.now() changing every render
+  const [now] = useState(() => Date.now());
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
   const costData = useQuery(
     api.costs.getCostsByDateRange,
-    activeTab === "overview" ? { startTs: sevenDaysAgo, endTs: Date.now(), agentName: name.toLowerCase() } : "skip"
+    activeTab === "overview" ? { startTs: sevenDaysAgo, endTs: now, agentName: name.toLowerCase() } : "skip"
   );
 
   // AGT-245: Brutal metrics - Execution stats (last 24 hours)
@@ -187,7 +191,7 @@ export function AgentProfile({
       <div className="shrink-0 border-b border-[#222] px-4 py-3">
         <div className="flex items-center gap-3 mb-3">
           <Avatar className="h-10 w-10 border border-[#222]">
-            <AvatarFallback className="bg-[#111] text-base text-zinc-50">{avatar}</AvatarFallback>
+            <AvatarFallback className="bg-[#111] text-base text-zinc-50">{displayAvatar}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -316,20 +320,20 @@ export function AgentProfile({
             </div>
 
             {/* Cost Metrics (7d) — AGT-245 */}
-            {costData && (
+            {costData?.totals && (
               <div className="rounded border border-[#222] bg-[#0a0a0a] p-3">
                 <div className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Cost (7d)</div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <div className="text-2xl font-bold text-zinc-50">${costData.totals.cost.toFixed(2)}</div>
+                    <div className="text-2xl font-bold text-zinc-50">${(costData.totals.cost ?? 0).toFixed(2)}</div>
                     <div className="text-[10px] text-zinc-600">Total</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-zinc-50">{Math.round(costData.totals.inputTokens / 1000)}k</div>
+                    <div className="text-2xl font-bold text-zinc-50">{Math.round((costData.totals.inputTokens ?? 0) / 1000)}k</div>
                     <div className="text-[10px] text-zinc-600">Input Tokens</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-zinc-50">{Math.round(costData.totals.outputTokens / 1000)}k</div>
+                    <div className="text-2xl font-bold text-zinc-50">{Math.round((costData.totals.outputTokens ?? 0) / 1000)}k</div>
                     <div className="text-[10px] text-zinc-600">Output Tokens</div>
                   </div>
                 </div>
@@ -337,24 +341,24 @@ export function AgentProfile({
             )}
 
             {/* Execution Stats (24h) — AGT-245 */}
-            {executionSummary && (
+            {executionSummary?.files && executionSummary?.logs && (
               <div className="rounded border border-[#222] bg-[#0a0a0a] p-3">
                 <div className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Execution (24h)</div>
                 <div className="grid grid-cols-3 gap-3 mb-3">
                   <div>
-                    <div className="text-2xl font-bold text-zinc-50">{executionSummary.files.totalActions}</div>
+                    <div className="text-2xl font-bold text-zinc-50">{executionSummary.files.totalActions ?? 0}</div>
                     <div className="text-[10px] text-zinc-600">File Actions</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-zinc-50">{executionSummary.files.uniqueFiles}</div>
+                    <div className="text-2xl font-bold text-zinc-50">{executionSummary.files.uniqueFiles ?? 0}</div>
                     <div className="text-[10px] text-zinc-600">Unique Files</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-red-400">{executionSummary.logs.error}</div>
+                    <div className="text-2xl font-bold text-red-400">{executionSummary.logs.error ?? 0}</div>
                     <div className="text-[10px] text-zinc-600">Errors</div>
                   </div>
                 </div>
-                {executionSummary.recentErrors.length > 0 && (
+                {Array.isArray(executionSummary.recentErrors) && executionSummary.recentErrors.length > 0 && (
                   <div className="rounded bg-red-500/10 border border-red-500/30 px-2 py-1.5">
                     <div className="text-[10px] uppercase tracking-wider text-red-400 mb-1">Recent Errors</div>
                     {executionSummary.recentErrors.slice(0, 3).map((err: { message: string }, i: number) => (
@@ -375,11 +379,11 @@ export function AgentProfile({
                     <div className="text-[10px] text-orange-600">Total</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-red-400">{alertStats.bySeverity.critical ?? 0}</div>
+                    <div className="text-2xl font-bold text-red-400">{alertStats.bySeverity?.critical ?? 0}</div>
                     <div className="text-[10px] text-orange-600">Critical</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-yellow-400">{alertStats.bySeverity.warning ?? 0}</div>
+                    <div className="text-2xl font-bold text-yellow-400">{alertStats.bySeverity?.warning ?? 0}</div>
                     <div className="text-[10px] text-orange-600">Warnings</div>
                   </div>
                 </div>

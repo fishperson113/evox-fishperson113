@@ -22,7 +22,7 @@ type StripAgent = {
   name: string;
   role: string;
   status: string;
-  avatar: string;
+  avatar?: string;
   currentTaskIdentifier?: string | null;
 };
 

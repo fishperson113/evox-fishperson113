@@ -30,7 +30,7 @@ interface Task {
 interface Agent {
   _id: Id<"agents">;
   name: string;
-  avatar: string;
+  avatar?: string;
 }
 
 interface TaskBoardProps {

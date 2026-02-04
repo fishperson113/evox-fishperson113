@@ -47,13 +47,13 @@ export function AgentSettingsModal({ open, agentId, onClose }: AgentSettingsModa
       const agentStatus = (agent.status ?? "idle") as "online" | "idle" | "busy" | "offline";
       const agentModel = ((agent as { metadata?: { preferredModel?: string } }).metadata?.preferredModel === "codex" ? "codex" : "claude") as "claude" | "codex";
       setName(agent.name);
-      setAvatar(agent.avatar);
+      setAvatar(agent.avatar ?? "🤖");
       setRole(agent.role as "pm" | "backend" | "frontend");
       setStatus(agentStatus);
       setModel(agentModel);
       originalValues.current = {
         name: agent.name,
-        avatar: agent.avatar,
+        avatar: agent.avatar ?? "🤖",
         role: agent.role as "pm" | "backend" | "frontend",
         status: agentStatus,
         model: agentModel,

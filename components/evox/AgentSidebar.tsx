@@ -49,7 +49,7 @@ type SidebarAgent = {
   name: string;
   role: string;
   status: string;
-  avatar: string;
+  avatar?: string;
   currentTaskIdentifier: string | null;
   currentTaskTitle: string | null;
   statusSince: number | null;
@@ -151,7 +151,7 @@ export function AgentSidebar({
 
               {/* Avatar */}
               <span className="shrink-0 text-2xl leading-none" aria-hidden>
-                {agent.avatar}
+                {agent.avatar ?? agent.name.charAt(0).toUpperCase()}
               </span>
 
               {/* Name + Role + Task */}

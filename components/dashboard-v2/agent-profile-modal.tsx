@@ -12,7 +12,7 @@ interface AgentProfileModalProps {
   name: string;
   role: string;
   status: string;
-  avatar: string;
+  avatar?: string;
   onClose: () => void;
 }
 
@@ -40,6 +40,7 @@ export function AgentProfileModal({
   avatar,
   onClose,
 }: AgentProfileModalProps) {
+  const displayAvatar = avatar ?? name.charAt(0).toUpperCase();
   useEffect(() => {
     if (!open) return;
     const handleEscape = (e: KeyboardEvent) => {
@@ -66,7 +67,7 @@ export function AgentProfileModal({
         <div className="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-4 py-3 bg-[#0a0a0a]">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10 border border-white/[0.08]">
-              <AvatarFallback className="bg-[#111] text-base font-bold text-zinc-50">{avatar}</AvatarFallback>
+              <AvatarFallback className="bg-[#111] text-base font-bold text-zinc-50">{displayAvatar}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -92,7 +93,7 @@ export function AgentProfileModal({
             name={name}
             role={role}
             status={status}
-            avatar={avatar}
+            avatar={displayAvatar}
             onClose={onClose}
             embedded
           />
