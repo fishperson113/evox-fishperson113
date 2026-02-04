@@ -12,7 +12,7 @@ export default defineSchema({
   // Agent management
   agents: defineTable({
     name: v.string(),
-    role: v.union(v.literal("pm"), v.literal("backend"), v.literal("frontend")),
+    role: v.union(v.literal("pm"), v.literal("backend"), v.literal("frontend"), v.literal("qa")),
     status: v.union(
       v.literal("online"),
       v.literal("idle"),

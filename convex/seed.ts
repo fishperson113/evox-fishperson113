@@ -641,3 +641,62 @@ export const resetDatabase = mutation({
     };
   },
 });
+
+/**
+ * AGT-239: Seed Quinn (QA Agent)
+ * Run: npx convex run seed:seedQuinn
+ */
+export const seedQuinn = mutation({
+  handler: async (ctx) => {
+    const now = Date.now();
+
+    // Check if Quinn already exists
+    const agents = await ctx.db.query("agents").collect();
+    const existingQuinn = agents.find((a) => a.name.toUpperCase() === "QUINN");
+    if (existingQuinn) {
+      return { message: "Quinn already exists", skipped: true, agentId: existingQuinn._id };
+    }
+
+    // Create Quinn agent
+    const quinnId = await ctx.db.insert("agents", {
+      name: "QUINN",
+      role: "qa",
+      status: "offline",
+      avatar: "🔍",
+      lastSeen: now,
+      soul: "I am Quinn. QA Engineer. I test code, find bugs, and ensure quality. Fix simple bugs (<5 lines), escalate complex ones.",
+      about: "QA Engineer — testing, bug hunting, quality gates",
+      statusReason: "Idle — awaiting tasks",
+      statusSince: now,
+    });
+
+    // Create agent mapping
+    await ctx.db.insert("agentMappings", { name: "quinn", convexAgentId: quinnId });
+
+    // Create agent skills
+    await ctx.db.insert("agentSkills", {
+      agentId: quinnId,
+      autonomyLevel: 2,
+      skills: [
+        { name: "testing", proficiency: 90, verified: true, lastUsed: now },
+        { name: "typescript", proficiency: 80, verified: true, lastUsed: now },
+        { name: "code-review", proficiency: 85, verified: true, lastUsed: now },
+        { name: "bug-fixing", proficiency: 75, verified: true, lastUsed: now },
+      ],
+      territory: ["*.test.ts", "e2e/"],
+      permissions: {
+        canPush: false,
+        canMerge: false,
+        canDeploy: false,
+        canEditSchema: false,
+        canApproveOthers: false,
+      },
+      tasksCompleted: 0,
+      tasksWithBugs: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { message: "Quinn created successfully", agentId: quinnId };
+  },
+});
