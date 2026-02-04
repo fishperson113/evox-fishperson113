@@ -29,16 +29,14 @@ export function CommunicationLog({ className }: CommunicationLogProps) {
   const [showAnalytics, setShowAnalytics] = useState(true);
 
   // Fetch messages with filters
-  const messages = useQuery(
-    api.agentMessages.getAllMessages,
-    selectedAgent || selectedType
-      ? {
-          agentName: selectedAgent || undefined,
-          messageType: selectedType || undefined,
-          limit: 100,
-        }
-      : { limit: 100 }
-  );
+  const messagesArgs = useMemo(() => {
+    const args: { agentName?: string; messageType?: MessageType; limit: number } = { limit: 100 };
+    if (selectedAgent) args.agentName = selectedAgent;
+    if (selectedType) args.messageType = selectedType;
+    return args;
+  }, [selectedAgent, selectedType]);
+
+  const messages = useQuery(api.agentMessages.getAllMessages, messagesArgs);
 
   // Fetch analytics
   const analytics = useQuery(api.agentMessages.getAnalytics, { limit: 500 });
